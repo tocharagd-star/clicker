@@ -1,82 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Local Clicker with Shop</title>
+<meta charset="UTF-8">
+<title>Clicker</title>
+<style>
+body {
+    margin: 0;
+    background:#222;
+    font-family: Arial;
+    color:white;
+    text-align:center;
+}
+#container {
+    max-width: 500px;
+    margin:40px auto;
+}
+input, button {
+    padding:10px;
+    font-size:18px;
+    width:90%;
+    margin-bottom:10px;
+    border:none;
+    border-radius:6px;
+}
+button { cursor:pointer; }
+#game { display:none; }
+#leaderboard {
+    margin-top:25px;
+    background:#333;
+    padding:10px;
+    border-radius:8px;
+}
+.item {
+    padding:5px;
+    border-bottom:1px solid #555;
+    text-align:left;
+}
+</style>
 </head>
 <body>
 
-<div style="text-align:center; margin-top:50px; font-family:Arial, sans-serif;">
-    <div id="counter" style="font-size:30px; margin-bottom:20px;">Clicks: 0 | Coins: 0</div>
+<div id="container">
 
-    <button id="clickBtn" style="font-size:22px; padding:15px 30px; cursor:pointer;">Click Me</button>
+    <div id="login">
+        <h2>Регистрация</h2>
+        <input id="username" placeholder="Введите имя">
+        <button onclick="register()">Продолжить</button>
+    </div>
 
-    <div style="margin-top:40px; display:inline-block; text-align:left;">
-        <h3>Shop</h3>
-        <div style="margin-bottom:10px;">
-            <button id="upgradeClick" style="font-size:18px; padding:8px 15px; cursor:pointer;">Upgrade Click (+1) - 10 Coins</button>
-        </div>
-        <div style="margin-bottom:10px;">
-            <button id="autoClick" style="font-size:18px; padding:8px 15px; cursor:pointer;">Auto Click (+1/sec) - 50 Coins</button>
+    <div id="game">
+        <h2 id="welcome"></h2>
+        <h1 id="score">0</h1>
+        <button onclick="clickBtn()">Клик!</button>
+
+        <div id="leaderboard">
+            <h3>Таблица лидеров</h3>
+            <div id="list"></div>
         </div>
     </div>
+
 </div>
 
 <script>
-let clicks = 0;          // Общее количество кликов
-let coins = 0;           // Валюта
-let clickValue = 1;      // Сколько даёт один клик
-let autoClickValue = 0;  // Автоклик
-let upgradeClickCost = 10;
-let autoClickCost = 50;
+let user = null;
+let score = 0;
 
-// Обновление счётчика и магазина
-function updateDisplay() {
-    document.getElementById('counter').innerText = Clicks: ${clicks} | Coins: ${coins};
-    document.getElementById('upgradeClick').innerText = Upgrade Click (+1) - ${upgradeClickCost} Coins;
-    document.getElementById('autoClick').innerText = Auto Click (+1/sec) - ${autoClickCost} Coins;
+function saveLeaderboard() {
+    let lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+    let exist = lb.find(x => x.name === user);
+    if (exist) exist.score = score;
+    else lb.push({ name: user, score: score });
+    lb.sort((a,b)=>b.score-a.score);
+    localStorage.setItem("leaderboard", JSON.stringify(lb));
+    renderLeaderboard();
 }
 
-// Клик по основной кнопке
-document.getElementById('clickBtn').addEventListener('click', () => {
-    clicks += clickValue;
-    coins += clickValue;
-    updateDisplay();
-});
+function renderLeaderboard() {
+    let lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+    let html = "";
+    lb.forEach((p,i)=>{
+        html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`;
+    });
+    document.getElementById("list").innerHTML = html;
+}
 
-// Покупка улучшения клика
-document.getElementById('upgradeClick').addEventListener('click', () => {
-    if(coins >= upgradeClickCost){
-        coins -= upgradeClickCost;
-        clickValue += 1;
-        upgradeClickCost = Math.floor(upgradeClickCost * 1.5);
-        updateDisplay();
-    } else {
-        alert("Not enough coins!");
-    }
-});
+function register() {
+    let name = document.getElementById("username").value.trim();
+    if (!name) return;
 
-// Покупка автоклика
-document.getElementById('autoClick').addEventListener('click', () => {
-    if(coins >= autoClickCost){
-        coins -= autoClickCost;
-        autoClickValue += 1;
-        autoClickCost = Math.floor(autoClickCost * 1.5);
-        updateDisplay();
-    } else {
-        alert("Not enough coins!");
-    }
-});
+    user = name;
+    let stored = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+    let exist = stored.find(x => x.name === user);
 
-// Автоклик каждую секунду
-setInterval(() => {
-    if(autoClickValue > 0){
-        clicks += autoClickValue;
-        coins += autoClickValue;
-        updateDisplay();
-    }
-}, 1000);
+    score = exist ? exist.score : 0;
 
-updateDisplay();
+    document.getElementById("welcome").innerText = "Игрок: " + user;
+    document.getElementById("score").innerText = score;
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("game").style.display = "block";
+
+    renderLeaderboard();
+}
+
+function clickBtn() {
+    score++;
+    document.getElementById("score").innerText = score;
+    saveLeaderboard();
+}
 </script>
 
 </body>
