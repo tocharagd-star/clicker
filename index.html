@@ -4,35 +4,28 @@
 <meta charset="UTF-8">
 <title>Online Clicker</title>
 <style>
-* { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-body { background:#1e1e2f; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; }
-.container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; box-shadow:0 0 15px rgba(0,0,0,0.5); }
-h1,h2,h3 { text-align:center; margin-bottom:15px; }
-button { width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; background:#4e4eff; color:#fff; cursor:pointer; transition:0.3s; }
-button:hover { background:#6f6fff; }
-#score { font-size:32px; text-align:center; margin-bottom:15px; }
-.list { max-height:150px; overflow-y:auto; margin-bottom:15px; border:1px solid #555; border-radius:6px; padding:5px; }
+body { background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; }
+.container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; }
+button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px; background:#4e4eff; color:#fff; font-size:16px; cursor:pointer; }
+#score { font-size:32px; text-align:center; margin:10px 0; }
+.list { max-height:150px; overflow-y:auto; border:1px solid #555; border-radius:6px; padding:5px; margin-bottom:10px; }
 .item { padding:5px; border-bottom:1px solid #444; }
 </style>
-
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"></script>
-
 </head>
 <body>
-
 <div class="container">
-    <h1>Online Clicker</h1>
-    <h2 id="welcome"></h2>
-    <div id="score">0</div>
-    <button onclick="clickBtn()">Клик!</button>
+<h1>Online Clicker</h1>
+<h2 id="welcome"></h2>
+<div id="score">0</div>
+<button id="clickBtn">Клик!</button>
 
-    <h3>Игроки онлайн</h3>
-    <div class="list" id="online"></div>
+<h3>Игроки онлайн</h3>
+<div class="list" id="online"></div>
 
-    <h3>Лидерборд</h3>
-    <div class="list" id="leaders"></div>
+<h3>Лидерборд</h3>
+<div class="list" id="leaders"></div>
 </div>
 
 <script>
@@ -51,65 +44,58 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 // ----------------------------------------------------------
 
-// Генерируем рандомный ник
 function randomNick() {
-    const adjectives = ["Синий","Быстрый","Весёлый","Смешной","Ловкий","Тёмный","Яркий"];
-    const nouns = ["Кот","Пёс","Кролик","Бобр","Тигр","Лис","Енот"];
-    return adjectives[Math.floor(Math.random()*adjectives.length)] + nouns[Math.floor(Math.random()*nouns.length)] + Math.floor(Math.random()*1000);
+    const adj = ["Синий","Быстрый","Весёлый","Смешной","Ловкий"];
+    const noun = ["Кот","Пёс","Кролик","Тигр","Лис"];
+    return adj[Math.floor(Math.random()*adj.length)] + noun[Math.floor(Math.random()*noun.length)] + Math.floor(Math.random()*1000);
 }
 
 let user = randomNick();
 let score = 0;
-
 document.getElementById("welcome").innerText = "Игрок: " + user;
 
-// ----------- CLICK --------------
-function clickBtn() {
+// Тест соединения
+db.ref("test").set({ working:true }).then(()=> console.log("Firebase работает")).catch(e=>console.error("Ошибка Firebase:", e));
+
+// Клик
+document.getElementById("clickBtn").addEventListener("click",()=>{
     score++;
     document.getElementById("score").innerText = score;
     db.ref("users/" + user + "/score").set(score);
+});
+
+// Онлайн
+function appearOnline(){
+    setInterval(()=> db.ref("online/"+user).set(Date.now()),1000);
 }
 
-// ----------- ONLINE PLAYERS --------------
-function appearOnline() {
-    setInterval(() => {
-        db.ref("online/" + user).set(Date.now());
-    }, 1000);
-}
-
-function listenOnline() {
-    db.ref("online").on("value", snap => {
-        const data = snap.val() || {};
+// Онлайн лист
+function listenOnline(){
+    db.ref("online").on("value",snap=>{
+        const data = snap.val()||{};
         const now = Date.now();
-        let html = "";
-        for (let u in data) {
-            if (now - data[u] < 3000) {
-                html += `<div class="item">${u}</div>`;
-            }
-        }
+        let html="";
+        for(let u in data) if(now-data[u]<3000) html+=`<div class="item">${u}</div>`;
         document.getElementById("online").innerHTML = html;
     });
 }
 
-// ----------- LEADERBOARD --------------
-function listenLeaderboard() {
-    db.ref("users").on("value", snap => {
-        const data = snap.val() || {};
-        let arr = [];
-        for (let u in data) arr.push({ name:u, score:data[u].score||0 });
+// Лидерборд
+function listenLeaderboard(){
+    db.ref("users").on("value",snap=>{
+        const data = snap.val()||{};
+        let arr=[];
+        for(let u in data) arr.push({name:u,score:data[u].score||0});
         arr.sort((a,b)=>b.score-a.score);
-        let html = "";
-        arr.forEach((p,i)=> { html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`; });
-        document.getElementById("leaders").innerHTML = html;
+        let html="";
+        arr.forEach((p,i)=>html+=`<div class="item">${i+1}. ${p.name} — ${p.score}</div>`);
+        document.getElementById("leaders").innerHTML=html;
     });
 }
 
-// Запускаем онлайн и лидерборд
 appearOnline();
 listenOnline();
 listenLeaderboard();
-
 </script>
-
 </body>
 </html>
