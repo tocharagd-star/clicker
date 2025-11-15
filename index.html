@@ -2,19 +2,20 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Online Clicker</title>
+<title>Online Clicker Google Login</title>
 <style>
 body { background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; }
 .container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; }
 button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px; background:#4e4eff; color:#fff; font-size:16px; cursor:pointer; }
 #score { font-size:32px; text-align:center; margin:10px 0; }
 .list { max-height:150px; overflow-y:auto; border:1px solid #555; border-radius:6px; padding:5px; margin-bottom:10px; }
-.item { padding:5px; border-bottom:1px solid #444; }
+.item { padding:5px; border-bottom:1px solid #444; display:flex; align-items:center; }
+.item img { width:24px; height:24px; border-radius:50%; margin-right:8px; }
 </style>
 
-<!-- Firebase compat SDK для GitHub Pages -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
 </head>
 <body>
@@ -23,6 +24,7 @@ button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px
 <h2 id="welcome"></h2>
 <div id="score">0</div>
 <button id="clickBtn">Клик!</button>
+<button id="googleLogin">Войти через Google</button>
 
 <h3>Игроки онлайн</h3>
 <div class="list" id="online"></div>
@@ -32,7 +34,6 @@ button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px
 </div>
 
 <script>
-// -------------------- Firebase Config --------------------
 const firebaseConfig = {
   apiKey: "AIzaSyB7d3kYeYEcTUy8tz-hKbYMw5f5zbRH6Ug",
   authDomain: "clicker-3044c.firebaseapp.com",
@@ -45,9 +46,9 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-// ----------------------------------------------------------
+const auth = firebase.auth();
 
-// Рандомный ник
+// ---------------- Рандомный ник ----------------
 function randomNick() {
     const adj = ["Синий","Быстрый","Весёлый","Смешной","Ловкий"];
     const noun = ["Кот","Пёс","Кролик","Тигр","Лис"];
@@ -55,25 +56,32 @@ function randomNick() {
 }
 
 let user = randomNick();
+let photo = null;
 let score = 0;
 document.getElementById("welcome").innerText = "Игрок: " + user;
 
-// Тест соединения
-db.ref("test").set({ok:true}).then(()=> console.log("Firebase работает")).catch(e=>console.error("Ошибка Firebase:", e));
+// ---------------- Google Login ----------------
+document.getElementById("googleLogin").addEventListener("click", ()=>{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).then(result=>{
+        user = result.user.displayName || randomNick();
+        photo = result.user.photoURL;
+        document.getElementById("welcome").innerText = "Игрок: " + user;
+        db.ref("users/"+user).set({score:score, photo:photo});
+    });
+});
 
-// Клик
+// ---------------- Click ----------------
 document.getElementById("clickBtn").addEventListener("click",()=>{
     score++;
     document.getElementById("score").innerText = score;
-    db.ref("users/" + user + "/score").set(score);
+    db.ref("users/" + user).set({score:score, photo:photo});
 });
 
-// Онлайн
+// ---------------- Онлайн ----------------
 function appearOnline(){
     setInterval(()=> db.ref("online/"+user).set(Date.now()),1000);
 }
-
-// Онлайн лист
 function listenOnline(){
     db.ref("online").on("value",snap=>{
         const data = snap.val()||{};
@@ -84,15 +92,18 @@ function listenOnline(){
     });
 }
 
-// Лидерборд
+// ---------------- Лидерборд ----------------
 function listenLeaderboard(){
     db.ref("users").on("value",snap=>{
         const data = snap.val()||{};
         let arr=[];
-        for(let u in data) arr.push({name:u,score:data[u].score||0});
+        for(let u in data) arr.push({name:u,score:data[u].score||0,photo:data[u].photo||null});
         arr.sort((a,b)=>b.score-a.score);
         let html="";
-        arr.forEach((p,i)=>html+=`<div class="item">${i+1}. ${p.name} — ${p.score}</div>`);
+        arr.forEach((p,i)=>{
+            let icon = p.photo ? `<img src="${p.photo}">` : "";
+            html+=`<div class="item">${icon}${i+1}. ${p.name} — ${p.score}</div>`;
+        });
         document.getElementById("leaders").innerHTML=html;
     });
 }
@@ -100,7 +111,6 @@ function listenLeaderboard(){
 appearOnline();
 listenOnline();
 listenLeaderboard();
-
 </script>
 </body>
 </html>
