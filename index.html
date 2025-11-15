@@ -1,43 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Local Clicker with Shop</title>
+    <title>Local Clicker with Shop</title>
 </head>
 <body>
 
-<div style="text-align:center; margin-top:50px;">
-    <div id="counter" style="font-size:30px;">0</div>
-    <button id="clickBtn" style="font-size:20px; margin-top:20px;">Click Me</button>
+<div style="text-align:center; margin-top:50px; font-family:Arial, sans-serif;">
+    <div id="counter" style="font-size:30px; margin-bottom:20px;">Clicks: 0 | Coins: 0</div>
 
-    <div style="margin-top:30px;">
+    <button id="clickBtn" style="font-size:22px; padding:15px 30px; cursor:pointer;">Click Me</button>
+
+    <div style="margin-top:40px; display:inline-block; text-align:left;">
         <h3>Shop</h3>
-        <div>
-            <button id="upgradeClick" style="margin:5px;">Upgrade Click (+1) - 10 Coins</button>
-            <span id="upgradeClickPrice">10</span>
+        <div style="margin-bottom:10px;">
+            <button id="upgradeClick" style="font-size:18px; padding:8px 15px; cursor:pointer;">Upgrade Click (+1) - 10 Coins</button>
         </div>
-        <div>
-            <button id="autoClick" style="margin:5px;">Auto Click (+1/sec) - 50 Coins</button>
-            <span id="autoClickPrice">50</span>
+        <div style="margin-bottom:10px;">
+            <button id="autoClick" style="font-size:18px; padding:8px 15px; cursor:pointer;">Auto Click (+1/sec) - 50 Coins</button>
         </div>
     </div>
 </div>
 
 <script>
-let clicks = 0;          // количество кликов
-let coins = 0;           // валюта для магазина
-let clickValue = 1;      // сколько даёт один клик
-let autoClickValue = 0;  // сколько добавляет автоклик
+let clicks = 0;          // Общее количество кликов
+let coins = 0;           // Валюта
+let clickValue = 1;      // Сколько даёт один клик
+let autoClickValue = 0;  // Автоклик
 let upgradeClickCost = 10;
 let autoClickCost = 50;
 
-// Обновление счётчика
+// Обновление счётчика и магазина
 function updateDisplay() {
     document.getElementById('counter').innerText = Clicks: ${clicks} | Coins: ${coins};
     document.getElementById('upgradeClick').innerText = Upgrade Click (+1) - ${upgradeClickCost} Coins;
     document.getElementById('autoClick').innerText = Auto Click (+1/sec) - ${autoClickCost} Coins;
 }
 
-// Клик по кнопке
+// Клик по основной кнопке
 document.getElementById('clickBtn').addEventListener('click', () => {
     clicks += clickValue;
     coins += clickValue;
@@ -70,9 +69,11 @@ document.getElementById('autoClick').addEventListener('click', () => {
 
 // Автоклик каждую секунду
 setInterval(() => {
-    clicks += autoClickValue;
-    coins += autoClickValue;
-    updateDisplay();
+    if(autoClickValue > 0){
+        clicks += autoClickValue;
+        coins += autoClickValue;
+        updateDisplay();
+    }
 }, 1000);
 
 updateDisplay();
