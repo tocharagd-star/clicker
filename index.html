@@ -4,16 +4,13 @@
 <meta charset="UTF-8">
 <title>Online Clicker</title>
 <style>
-* { box-sizing:border-box; margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+* { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 body { background:#1e1e2f; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; }
 .container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; box-shadow:0 0 15px rgba(0,0,0,0.5); }
 h1,h2,h3 { text-align:center; margin-bottom:15px; }
-input, button { width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; }
-input { background:#333; color:#fff; }
-button { background:#4e4eff; color:#fff; cursor:pointer; transition:0.3s; }
+button { width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; background:#4e4eff; color:#fff; cursor:pointer; transition:0.3s; }
 button:hover { background:#6f6fff; }
-#game { display:none; }
-.score { font-size:32px; text-align:center; margin-bottom:15px; }
+#score { font-size:32px; text-align:center; margin-bottom:15px; }
 .list { max-height:150px; overflow-y:auto; margin-bottom:15px; border:1px solid #555; border-radius:6px; padding:5px; }
 .item { padding:5px; border-bottom:1px solid #444; }
 </style>
@@ -26,27 +23,16 @@ button:hover { background:#6f6fff; }
 <body>
 
 <div class="container">
+    <h1>Online Clicker</h1>
+    <h2 id="welcome"></h2>
+    <div id="score">0</div>
+    <button onclick="clickBtn()">Клик!</button>
 
-    <div id="login">
-        <h1>Online Clicker</h1>
-        <input id="name" placeholder="Имя">
-        <input id="pass" placeholder="Пароль" type="password">
-        <button id="btnLogin">Войти / Зарегистрироваться</button>
-        <div id="loginError" style="color:#ff5555; text-align:center;"></div>
-    </div>
+    <h3>Игроки онлайн</h3>
+    <div class="list" id="online"></div>
 
-    <div id="game">
-        <h2 id="welcome"></h2>
-        <div class="score" id="score">0</div>
-        <button onclick="clickBtn()">Клик!</button>
-
-        <h3>Игроки онлайн</h3>
-        <div class="list" id="online"></div>
-
-        <h3>Лидерборд</h3>
-        <div class="list" id="leaders"></div>
-    </div>
-
+    <h3>Лидерборд</h3>
+    <div class="list" id="leaders"></div>
 </div>
 
 <script>
@@ -65,67 +51,23 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 // ----------------------------------------------------------
 
-let user = "";
-let score = 0;
-let upgrades = { autoClick:0, bonusClick:0 };
-
-const btnLogin = document.getElementById("btnLogin");
-btnLogin.addEventListener("click", register);
-
-// ----------- REGISTRATION / LOGIN --------------
-function register() {
-    const n = document.getElementById("name").value.trim();
-    const p = document.getElementById("pass").value.trim();
-    const errorDiv = document.getElementById("loginError");
-    errorDiv.innerText = "";
-
-    if (!n || !p) { errorDiv.innerText = "Введите имя и пароль"; return; }
-    if (/[.#$[\]]/.test(n)) { errorDiv.innerText = "Имя содержит недопустимые символы"; return; }
-
-    user = n;
-
-    db.ref("users/" + n).once("value").then(snap => {
-        const data = snap.val();
-
-        if (!data) {
-            // создаём нового игрока
-            db.ref("users/" + n).set({ password: p, score: 0, upgrades: upgrades });
-            score = 0;
-        } else {
-            if (data.password !== p) { errorDiv.innerText = "Неверный пароль"; return; }
-            score = data.score || 0;
-            upgrades = data.upgrades || { autoClick:0, bonusClick:0 };
-        }
-
-        document.getElementById("login").style.display = "none";
-        document.getElementById("game").style.display = "block";
-        document.getElementById("welcome").innerText = "Игрок: " + user;
-        document.getElementById("score").innerText = score;
-
-        appearOnline();
-        listenOnline();
-        listenLeaderboard();
-        startAutoClick();
-    }).catch(err => { errorDiv.innerText = "Ошибка подключения к базе"; console.error(err); });
+// Генерируем рандомный ник
+function randomNick() {
+    const adjectives = ["Синий","Быстрый","Весёлый","Смешной","Ловкий","Тёмный","Яркий"];
+    const nouns = ["Кот","Пёс","Кролик","Бобр","Тигр","Лис","Енот"];
+    return adjectives[Math.floor(Math.random()*adjectives.length)] + nouns[Math.floor(Math.random()*nouns.length)] + Math.floor(Math.random()*1000);
 }
+
+let user = randomNick();
+let score = 0;
+
+document.getElementById("welcome").innerText = "Игрок: " + user;
 
 // ----------- CLICK --------------
 function clickBtn() {
-    let bonus = 1 + (upgrades.bonusClick || 0);
-    score += bonus;
+    score++;
     document.getElementById("score").innerText = score;
     db.ref("users/" + user + "/score").set(score);
-}
-
-// ----------- AUTOCLICK --------------
-function startAutoClick() {
-    setInterval(()=>{
-        if(upgrades.autoClick) {
-            score += upgrades.autoClick;
-            document.getElementById("score").innerText = score;
-            db.ref("users/" + user + "/score").set(score);
-        }
-    },1000);
 }
 
 // ----------- ONLINE PLAYERS --------------
@@ -161,6 +103,12 @@ function listenLeaderboard() {
         document.getElementById("leaders").innerHTML = html;
     });
 }
+
+// Запускаем онлайн и лидерборд
+appearOnline();
+listenOnline();
+listenLeaderboard();
+
 </script>
 
 </body>
