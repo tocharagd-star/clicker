@@ -2,156 +2,148 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Clicker</title>
+<title>Online Clicker</title>
 <style>
-body {
-    margin: 0;
-    background:#222;
-    font-family: Arial;
-    color:white;
-    text-align:center;
-}
-#container {
-    max-width: 500px;
-    margin:40px auto;
-}
-input, button {
-    padding:10px;
-    font-size:18px;
-    width:90%;
-    margin-bottom:10px;
-    border:none;
-    border-radius:6px;
-}
+body { background:#222; color:white; font-family:Arial; text-align:center; margin:0; }
+input, button { padding:10px; font-size:18px; width:90%; margin-bottom:10px; border:none; border-radius:6px; }
 button { cursor:pointer; }
 #game { display:none; }
-
-#leaderboard, #onlinePlayers {
-    margin-top:25px;
-    background:#333;
-    padding:10px;
-    border-radius:8px;
-}
-.item {
-    padding:5px;
-    border-bottom:1px solid #555;
-    text-align:left;
-}
+.item { padding:5px; border-bottom:1px solid #555; text-align:left; }
 </style>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"></script>
+
 </head>
 <body>
 
-<div id="container">
+<h1>ONLINE CLICKER</h1>
 
-    <div id="login">
-        <h2>Регистрация</h2>
-        <input id="username" placeholder="Имя">
-        <input id="password" placeholder="Пароль" type="password">
-        <button onclick="register()">Войти</button>
-    </div>
+<div id="login">
+    <input id="name" placeholder="Имя">
+    <input id="pass" placeholder="Пароль" type="password">
+    <button onclick="register()">Войти / Зарегистрироваться</button>
+</div>
 
-    <div id="game">
-        <h2 id="welcome"></h2>
-        <h1 id="score">0</h1>
-        <button onclick="clickBtn()">Клик!</button>
-
-        <div id="leaderboard">
-            <h3>Таблица лидеров</h3>
-            <div id="list"></div>
-        </div>
-
-        <div id="onlinePlayers">
-            <h3>Игроки онлайн</h3>
-            <div id="onlineList"></div>
-        </div>
-    </div>
-
+<div id="game">
+    <h2 id="welcome"></h2>
+    <h1 id="score">0</h1>
+    <button onclick="clickBtn()">Клик!</button>
+    <h3>Игроки онлайн</h3>
+    <div id="online"></div>
+    <h3>Лидерборд</h3>
+    <div id="leaders"></div>
 </div>
 
 <script>
-let user = null;
+// -------------------- ВАШ CONFIG --------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyB7d3kYeYEcTUy8tz-hKbYMw5f5zbRH6Ug",
+  authDomain: "clicker-3044c.firebaseapp.com",
+  databaseURL: "https://clicker-3044c-default-rtdb.firebaseio.com",
+  projectId: "clicker-3044c",
+  storageBucket: "clicker-3044c.firebasestorage.app",
+  messagingSenderId: "143909161656",
+  appId: "1:143909161656:web:368498af1ab183e56d024d",
+  measurementId: "G-JWS932SQBG"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+// ----------------------------------------------------------
+
+let user = "";
 let score = 0;
-let updateTimer;
+let upgrades = { autoClick: 0, bonusClick: 0 };
 
-// ========== Leaderboard ==========
-function saveLeaderboard() {
-    let lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-    let exist = lb.find(x => x.name === user);
-    if (exist) exist.score = score;
-    else lb.push({ name: user, score: score });
-    lb.sort((a,b)=>b.score-a.score);
-    localStorage.setItem("leaderboard", JSON.stringify(lb));
-    renderLeaderboard();
-}
-
-function renderLeaderboard() {
-    let lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-    let html = "";
-    lb.forEach((p,i)=>{
-        html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`;
-    });
-    document.getElementById("list").innerHTML = html;
-}
-
-// ========== ONLINE PLAYERS ==========
-function updateOnline() {
-    let now = Date.now();
-    let online = JSON.parse(localStorage.getItem("onlinePlayers") || "{}");
-
-    online[user] = now;
-    localStorage.setItem("onlinePlayers", JSON.stringify(online));
-
-    let html = "";
-    for (let name in online) {
-        if (now - online[name] < 3000) {
-            html += `<div class="item">${name}</div>`;
-        }
-    }
-    document.getElementById("onlineList").innerHTML = html;
-}
-
-// ========== LOGIN ==========
+// ----------- REGISTRATION / LOGIN --------------
 function register() {
-    let name = document.getElementById("username").value.trim();
-    let pass = document.getElementById("password").value.trim();
-    if (!name || !pass) return;
+    let n = name.value.trim();
+    let p = pass.value.trim();
+    if (!n || !p) return;
 
-    let accs = JSON.parse(localStorage.getItem("accounts") || "{}");
+    user = n;
 
-    if (!accs[name]) {
-        accs[name] = pass;
-    } else {
-        if (accs[name] !== pass) {
-            alert("Неверный пароль");
-            return;
+    db.ref("users/" + n).once("value").then(snap => {
+        let data = snap.val();
+
+        if (!data) {
+            // создаём нового игрока
+            db.ref("users/" + n).set({ password: p, score: 0, upgrades: upgrades });
+            score = 0;
+        } else {
+            if (data.password !== p) { alert("Неверный пароль"); return; }
+            score = data.score || 0;
+            upgrades = data.upgrades || { autoClick:0, bonusClick:0 };
         }
-    }
 
-    localStorage.setItem("accounts", JSON.stringify(accs));
+        login.style.display = "none";
+        game.style.display = "block";
+        welcome.innerText = "Игрок: " + user;
+        document.getElementById("score").innerText = score;
 
-    user = name;
-
-    let lb = JSON.parse(localStorage.getItem("leaderboard") || "[]");
-    let exist = lb.find(x => x.name === user);
-    score = exist ? exist.score : 0;
-
-    document.getElementById("welcome").innerText = "Игрок: " + user;
-    document.getElementById("score").innerText = score;
-
-    document.getElementById("login").style.display = "none";
-    document.getElementById("game").style.display = "block";
-
-    renderLeaderboard();
-
-    updateOnline();
-    updateTimer = setInterval(updateOnline, 1000);
+        appearOnline();
+        listenOnline();
+        listenLeaderboard();
+        startAutoClick();
+    });
 }
 
-// ========== CLICK ==========
+// ----------- CLICK --------------
 function clickBtn() {
-    score++;
+    let bonus = 1 + (upgrades.bonusClick || 0);
+    score += bonus;
     document.getElementById("score").innerText = score;
-    saveLeaderboard();
+    db.ref("users/" + user + "/score").set(score);
+}
+
+// ----------- AUTOCLICK --------------
+function startAutoClick() {
+    setInterval(()=>{
+        if(upgrades.autoClick) {
+            score += upgrades.autoClick;
+            document.getElementById("score").innerText = score;
+            db.ref("users/" + user + "/score").set(score);
+        }
+    },1000);
+}
+
+// ----------- ONLINE PLAYERS --------------
+function appearOnline() {
+    setInterval(() => {
+        db.ref("online/" + user).set(Date.now());
+    }, 1000);
+}
+
+function listenOnline() {
+    db.ref("online").on("value", snap => {
+        let data = snap.val() || {};
+        let now = Date.now();
+        let html = "";
+        for (let u in data) {
+            if (now - data[u] < 3000) {
+                html += `<div class="item">${u}</div>`;
+            }
+        }
+        online.innerHTML = html;
+    });
+}
+
+// ----------- LEADERBOARD --------------
+function listenLeaderboard() {
+    db.ref("users").on("value", snap => {
+        let data = snap.val() || {};
+        let arr = [];
+        for (let u in data) {
+            arr.push({ name: u, score: data[u].score || 0 });
+        }
+        arr.sort((a,b)=>b.score-a.score);
+        let html = "";
+        arr.forEach((p,i)=>{
+            html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`;
+        });
+        leaders.innerHTML = html;
+    });
 }
 </script>
 
