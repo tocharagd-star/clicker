@@ -1,14 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <title>Online Clicker</title>
 <style>
-body { background:#222; color:white; font-family:Arial; text-align:center; margin:0; }
-input, button { padding:10px; font-size:18px; width:90%; margin-bottom:10px; border:none; border-radius:6px; }
-button { cursor:pointer; }
+* { box-sizing:border-box; margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background:#1e1e2f; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; }
+.container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; box-shadow:0 0 15px rgba(0,0,0,0.5); }
+h1,h2,h3 { text-align:center; margin-bottom:15px; }
+input, button { width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; }
+input { background:#333; color:#fff; }
+button { background:#4e4eff; color:#fff; cursor:pointer; transition:0.3s; }
+button:hover { background:#6f6fff; }
 #game { display:none; }
-.item { padding:5px; border-bottom:1px solid #555; text-align:left; }
+.score { font-size:32px; text-align:center; margin-bottom:15px; }
+.list { max-height:150px; overflow-y:auto; margin-bottom:15px; border:1px solid #555; border-radius:6px; padding:5px; }
+.item { padding:5px; border-bottom:1px solid #444; }
 </style>
 
 <!-- Firebase SDK -->
@@ -18,22 +25,28 @@ button { cursor:pointer; }
 </head>
 <body>
 
-<h1>ONLINE CLICKER</h1>
+<div class="container">
 
-<div id="login">
-    <input id="name" placeholder="Имя">
-    <input id="pass" placeholder="Пароль" type="password">
-    <button onclick="register()">Войти / Зарегистрироваться</button>
-</div>
+    <div id="login">
+        <h1>Online Clicker</h1>
+        <input id="name" placeholder="Имя">
+        <input id="pass" placeholder="Пароль" type="password">
+        <button id="btnLogin">Войти / Зарегистрироваться</button>
+        <div id="loginError" style="color:#ff5555; text-align:center;"></div>
+    </div>
 
-<div id="game">
-    <h2 id="welcome"></h2>
-    <h1 id="score">0</h1>
-    <button onclick="clickBtn()">Клик!</button>
-    <h3>Игроки онлайн</h3>
-    <div id="online"></div>
-    <h3>Лидерборд</h3>
-    <div id="leaders"></div>
+    <div id="game">
+        <h2 id="welcome"></h2>
+        <div class="score" id="score">0</div>
+        <button onclick="clickBtn()">Клик!</button>
+
+        <h3>Игроки онлайн</h3>
+        <div class="list" id="online"></div>
+
+        <h3>Лидерборд</h3>
+        <div class="list" id="leaders"></div>
+    </div>
+
 </div>
 
 <script>
@@ -54,39 +67,46 @@ const db = firebase.database();
 
 let user = "";
 let score = 0;
-let upgrades = { autoClick: 0, bonusClick: 0 };
+let upgrades = { autoClick:0, bonusClick:0 };
+
+const btnLogin = document.getElementById("btnLogin");
+btnLogin.addEventListener("click", register);
 
 // ----------- REGISTRATION / LOGIN --------------
 function register() {
-    let n = name.value.trim();
-    let p = pass.value.trim();
-    if (!n || !p) return;
+    const n = document.getElementById("name").value.trim();
+    const p = document.getElementById("pass").value.trim();
+    const errorDiv = document.getElementById("loginError");
+    errorDiv.innerText = "";
+
+    if (!n || !p) { errorDiv.innerText = "Введите имя и пароль"; return; }
+    if (/[.#$[\]]/.test(n)) { errorDiv.innerText = "Имя содержит недопустимые символы"; return; }
 
     user = n;
 
     db.ref("users/" + n).once("value").then(snap => {
-        let data = snap.val();
+        const data = snap.val();
 
         if (!data) {
             // создаём нового игрока
             db.ref("users/" + n).set({ password: p, score: 0, upgrades: upgrades });
             score = 0;
         } else {
-            if (data.password !== p) { alert("Неверный пароль"); return; }
+            if (data.password !== p) { errorDiv.innerText = "Неверный пароль"; return; }
             score = data.score || 0;
             upgrades = data.upgrades || { autoClick:0, bonusClick:0 };
         }
 
-        login.style.display = "none";
-        game.style.display = "block";
-        welcome.innerText = "Игрок: " + user;
+        document.getElementById("login").style.display = "none";
+        document.getElementById("game").style.display = "block";
+        document.getElementById("welcome").innerText = "Игрок: " + user;
         document.getElementById("score").innerText = score;
 
         appearOnline();
         listenOnline();
         listenLeaderboard();
         startAutoClick();
-    });
+    }).catch(err => { errorDiv.innerText = "Ошибка подключения к базе"; console.error(err); });
 }
 
 // ----------- CLICK --------------
@@ -117,32 +137,28 @@ function appearOnline() {
 
 function listenOnline() {
     db.ref("online").on("value", snap => {
-        let data = snap.val() || {};
-        let now = Date.now();
+        const data = snap.val() || {};
+        const now = Date.now();
         let html = "";
         for (let u in data) {
             if (now - data[u] < 3000) {
                 html += `<div class="item">${u}</div>`;
             }
         }
-        online.innerHTML = html;
+        document.getElementById("online").innerHTML = html;
     });
 }
 
 // ----------- LEADERBOARD --------------
 function listenLeaderboard() {
     db.ref("users").on("value", snap => {
-        let data = snap.val() || {};
+        const data = snap.val() || {};
         let arr = [];
-        for (let u in data) {
-            arr.push({ name: u, score: data[u].score || 0 });
-        }
+        for (let u in data) arr.push({ name:u, score:data[u].score||0 });
         arr.sort((a,b)=>b.score-a.score);
         let html = "";
-        arr.forEach((p,i)=>{
-            html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`;
-        });
-        leaders.innerHTML = html;
+        arr.forEach((p,i)=> { html += `<div class="item">${i+1}. ${p.name} — ${p.score}</div>`; });
+        document.getElementById("leaders").innerHTML = html;
     });
 }
 </script>
