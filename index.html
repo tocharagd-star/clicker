@@ -2,23 +2,27 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Advanced Clicker</title>
+<title>Clicker Pro</title>
 <style>
-body { margin:0; background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; height:100vh; }
-#menu { width:100px; background:#2a2a3f; display:flex; flex-direction:column; align-items:center; padding:10px; }
-#menu button { width:80px; height:80px; margin:5px 0; border:none; border-radius:12px; font-size:14px; cursor:pointer; background:#4e4eff; color:#fff; transition:0.2s; }
+body { margin:0; font-family:sans-serif; background:#1e1e2f; color:#fff; display:flex; height:100vh; }
+#menu { width:120px; background:#2a2a3f; display:flex; flex-direction:column; align-items:center; padding:10px; }
+#menu button { width:100px; height:60px; margin:10px 0; border:none; border-radius:12px; font-size:14px; cursor:pointer; background:#4e4eff; color:#fff; transition:0.2s; }
 #menu button:hover { background:#6f6fff; transform:scale(1.05); }
 #game { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
 #score { font-size:48px; margin-bottom:20px; transition: transform 0.2s; }
-#clickBtn { width:200px; height:200px; border-radius:50%; border:none; background:#ff5050; color:#fff; font-size:24px; cursor:pointer; transition: transform 0.1s; }
-.panel { position:absolute; top:100px; width:300px; background:#2a2a3f; border-radius:12px; padding:10px; display:none; }
-.panel h3 { margin:0 0 10px 0; }
-.panel button { width:100%; margin:5px 0; }
-.item { display:flex; align-items:center; margin:3px 0; }
+#clickBtn { width:200px; height:200px; border-radius:50%; border:none; background:#ff5050; color:#fff; font-size:24px; cursor:pointer; transition: transform 0.1s, box-shadow 0.1s; }
+#clickBtn:active { transform: scale(0.95); box-shadow:0 0 20px #ff8888; }
+.panel { position:absolute; top:50px; right:20px; width:300px; background:#2a2a3f; border-radius:12px; padding:15px; display:none; box-shadow:0 0 15px #000; z-index:10; }
+.panel h3 { margin:0 0 10px 0; display:flex; justify-content:space-between; align-items:center; }
+.panel h3 span.close { cursor:pointer; font-size:20px; color:#f55; }
+.panel button { width:100%; margin:5px 0; border-radius:8px; background:#4e4eff; color:#fff; border:none; cursor:pointer; transition:0.2s; }
+.panel button:hover { background:#6f6fff; }
+.item { display:flex; align-items:center; margin:5px 0; }
 .item img { width:32px; height:32px; border-radius:50%; margin-right:8px; }
-#loginScreen { position:absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#1e1e2f; flex-direction:column; }
+#loginScreen { position:absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#1e1e2f; flex-direction:column; z-index:20; }
 #loginScreen input, #loginScreen button { margin:5px; padding:10px; border-radius:6px; border:none; font-size:16px; }
-#loginScreen button { background:#4e4eff; color:#fff; cursor:pointer; }
+#loginScreen button { background:#4e4eff; color:#fff; cursor:pointer; transition:0.2s; }
+#loginScreen button:hover { background:#6f6fff; }
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -28,7 +32,7 @@ body { margin:0; background:#1e1e2f; color:#fff; font-family:sans-serif; display
 </head>
 <body>
 
-<!-- Login Screen -->
+<!-- Login -->
 <div id="loginScreen">
 <h1>Вход / Регистрация</h1>
 <input type="text" id="nickname" placeholder="Введите ник">
@@ -43,18 +47,25 @@ body { margin:0; background:#1e1e2f; color:#fff; font-family:sans-serif; display
 <button id="profileBtn">Профиль</button>
 </div>
 
-<!-- Game Area -->
+<!-- Game -->
 <div id="game" class="hidden">
 <div id="score">0</div>
 <button id="clickBtn">Клик!</button>
 
 <!-- Panels -->
-<div id="leadersPanel" class="panel"><h3>Лидерборд</h3><div id="leadersList"></div></div>
-<div id="upgradesPanel" class="panel"><h3>Апгрейды</h3>
+<div id="leadersPanel" class="panel">
+<h3>Лидерборд <span class="close" onclick="closePanel('leadersPanel')">&times;</span></h3>
+<div id="leadersList"></div>
+</div>
+
+<div id="upgradesPanel" class="panel">
+<h3>Апгрейды <span class="close" onclick="closePanel('upgradesPanel')">&times;</span></h3>
 <button id="autoClickBtn">Автоклик (+1/сек) — 50</button>
 <button id="bonusClickBtn">Бонус клик (+1/клик) — 100</button>
 </div>
-<div id="profilePanel" class="panel"><h3>Профиль</h3>
+
+<div id="profilePanel" class="panel">
+<h3>Профиль <span class="close" onclick="closePanel('profilePanel')">&times;</span></h3>
 <input type="text" id="customNick" placeholder="Новый ник">
 <select id="colorSelect">
 <option value="#fff">Белый</option>
@@ -97,7 +108,6 @@ function startGame(){
     document.getElementById("menu").classList.remove("hidden");
     document.getElementById("game").classList.remove("hidden");
     document.getElementById("score").innerText = score;
-    document.getElementById("welcome")?.remove();
     appearOnline();
     listenOnline();
     listenLeaderboard();
@@ -147,15 +157,9 @@ function animateScore(){
     setTimeout(()=>scoreEl.style.transform="scale(1)",100);
 }
 
-// ---------------- Menu ----------------
-document.getElementById("leadersBtn").addEventListener("click",()=>showPanel("leadersPanel"));
-document.getElementById("upgradesBtn").addEventListener("click",()=>showPanel("upgradesPanel"));
-document.getElementById("profileBtn").addEventListener("click",()=>showPanel("profilePanel"));
-function showPanel(id){
-    ["leadersPanel","upgradesPanel","profilePanel"].forEach(p=>{
-        document.getElementById(p).style.display=(p===id)?"block":"none";
-    });
-}
+// ---------------- Panels ----------------
+function showPanel(id){ document.getElementById(id).style.display='block'; }
+function closePanel(id){ document.getElementById(id).style.display='none'; }
 
 // ---------------- Upgrades ----------------
 document.getElementById("autoClickBtn").addEventListener("click",()=>{
@@ -164,7 +168,7 @@ document.getElementById("autoClickBtn").addEventListener("click",()=>{
 document.getElementById("bonusClickBtn").addEventListener("click",()=>{
     if(score>=bonusClickCost){ score-=bonusClickCost; bonusPerClick++; bonusClickCost*=2; updateUpgradeText(); saveAll(); }
 });
-function startAutoClick(){ if(!window.autoClickInterval){ window.autoClickInterval=setInterval(()=>{ score++; document.getElementById("score").innerText=score; saveAll(); animateScore(); },1000); } }
+function startAutoClick(){ if(!window.autoClickInterval){ window.autoClickInterval=setInterval(()=>{ score+=1; document.getElementById("score").innerText=score; saveAll(); animateScore(); },1000); } }
 function updateUpgradeText(){
     document.getElementById("autoClickBtn").innerText=`Автоклик (+1/сек) — ${autoClickCost}`;
     document.getElementById("bonusClickBtn").innerText=`Бонус клик (+1/клик) — ${bonusClickCost}`;
@@ -191,7 +195,7 @@ function listenOnline(){
     db.ref("online").on("value",snap=>{
         const data=snap.val()||{}; const now=Date.now(); let html="";
         for(let u in data) if(now-data[u]<3000) html+=`<div class="item">${u}</div>`;
-        document.getElementById("online").innerHTML=html;
+        document.getElementById("online")?.innerHTML=html;
     });
 }
 
@@ -203,7 +207,7 @@ function listenLeaderboard(){
         arr.sort((a,b)=>b.score-a.score);
         let html="";
         arr.forEach((p,i)=>{
-            let icon=p.photo?`<img src="${p.photo}">`:"";
+            let icon=p.photo?`<img src="${p.photo}">`:"<div style='width:32px;height:32px;margin-right:8px'></div>";
             html+=`<div class="item">${icon}${i+1}. ${p.name} — ${p.score}</div>`;
         });
         document.getElementById("leadersList").innerHTML=html;
