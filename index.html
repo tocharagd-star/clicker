@@ -11,8 +11,11 @@ button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px
 .list { max-height:150px; overflow-y:auto; border:1px solid #555; border-radius:6px; padding:5px; margin-bottom:10px; }
 .item { padding:5px; border-bottom:1px solid #444; }
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"></script>
+
+<!-- Firebase compat SDK для GitHub Pages -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
 </head>
 <body>
 <div class="container">
@@ -44,6 +47,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 // ----------------------------------------------------------
 
+// Рандомный ник
 function randomNick() {
     const adj = ["Синий","Быстрый","Весёлый","Смешной","Ловкий"];
     const noun = ["Кот","Пёс","Кролик","Тигр","Лис"];
@@ -55,7 +59,7 @@ let score = 0;
 document.getElementById("welcome").innerText = "Игрок: " + user;
 
 // Тест соединения
-db.ref("test").set({ working:true }).then(()=> console.log("Firebase работает")).catch(e=>console.error("Ошибка Firebase:", e));
+db.ref("test").set({ok:true}).then(()=> console.log("Firebase работает")).catch(e=>console.error("Ошибка Firebase:", e));
 
 // Клик
 document.getElementById("clickBtn").addEventListener("click",()=>{
@@ -96,6 +100,7 @@ function listenLeaderboard(){
 appearOnline();
 listenOnline();
 listenLeaderboard();
+
 </script>
 </body>
 </html>
