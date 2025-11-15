@@ -2,11 +2,13 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Online Clicker Google Login</title>
+<title>Online Clicker Registration + Google</title>
 <style>
 body { background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; justify-content:center; align-items:center; height:100vh; }
 .container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; }
-button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px; background:#4e4eff; color:#fff; font-size:16px; cursor:pointer; }
+button, input { width:100%; padding:10px; margin:5px 0; border:none; border-radius:6px; font-size:16px; }
+button { background:#4e4eff; color:#fff; cursor:pointer; }
+button:hover { background:#6f6fff; }
 #score { font-size:32px; text-align:center; margin:10px 0; }
 .list { max-height:150px; overflow-y:auto; border:1px solid #555; border-radius:6px; padding:5px; margin-bottom:10px; }
 .item { padding:5px; border-bottom:1px solid #444; display:flex; align-items:center; }
@@ -21,10 +23,15 @@ button { width:100%; padding:10px; margin:10px 0; border:none; border-radius:6px
 <body>
 <div class="container">
 <h1>Online Clicker</h1>
+
+<!-- Регистрация / Вход -->
+<input type="text" id="nickname" placeholder="Введите ник">
+<button id="registerBtn">Зарегистрироваться</button>
+<button id="googleLogin">Войти через Google</button>
+
 <h2 id="welcome"></h2>
 <div id="score">0</div>
 <button id="clickBtn">Клик!</button>
-<button id="googleLogin">Войти через Google</button>
 
 <h3>Игроки онлайн</h3>
 <div class="list" id="online"></div>
@@ -48,6 +55,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
+let user = null;
+let photo = null;
+let score = 0;
+
 // ---------------- Рандомный ник ----------------
 function randomNick() {
     const adj = ["Синий","Быстрый","Весёлый","Смешной","Ловкий"];
@@ -55,10 +66,15 @@ function randomNick() {
     return adj[Math.floor(Math.random()*adj.length)] + noun[Math.floor(Math.random()*noun.length)] + Math.floor(Math.random()*1000);
 }
 
-let user = randomNick();
-let photo = null;
-let score = 0;
-document.getElementById("welcome").innerText = "Игрок: " + user;
+// ---------------- Регистрация вручную ----------------
+document.getElementById("registerBtn").addEventListener("click", ()=>{
+    let nickInput = document.getElementById("nickname").value.trim();
+    if(!nickInput) nickInput = randomNick();
+    user = nickInput;
+    photo = null;
+    document.getElementById("welcome").innerText = "Игрок: " + user;
+    db.ref("users/"+user).set({score:score, photo:photo});
+});
 
 // ---------------- Google Login ----------------
 document.getElementById("googleLogin").addEventListener("click", ()=>{
@@ -73,6 +89,10 @@ document.getElementById("googleLogin").addEventListener("click", ()=>{
 
 // ---------------- Click ----------------
 document.getElementById("clickBtn").addEventListener("click",()=>{
+    if(!user) {
+        alert("Сначала зарегистрируйтесь или войдите через Google!");
+        return;
+    }
     score++;
     document.getElementById("score").innerText = score;
     db.ref("users/" + user).set({score:score, photo:photo});
@@ -80,6 +100,7 @@ document.getElementById("clickBtn").addEventListener("click",()=>{
 
 // ---------------- Онлайн ----------------
 function appearOnline(){
+    if(!user) return;
     setInterval(()=> db.ref("online/"+user).set(Date.now()),1000);
 }
 function listenOnline(){
