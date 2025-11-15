@@ -1,49 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Online Clicker</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <title>Local Clicker with Shop</title>
 </head>
 <body>
 
 <div style="text-align:center; margin-top:50px;">
     <div id="counter" style="font-size:30px;">0</div>
     <button id="clickBtn" style="font-size:20px; margin-top:20px;">Click Me</button>
+
+    <div style="margin-top:30px;">
+        <h3>Shop</h3>
+        <div>
+            <button id="upgradeClick" style="margin:5px;">Upgrade Click (+1) - 10 Coins</button>
+            <span id="upgradeClickPrice">10</span>
+        </div>
+        <div>
+            <button id="autoClick" style="margin:5px;">Auto Click (+1/sec) - 50 Coins</button>
+            <span id="autoClickPrice">50</span>
+        </div>
+    </div>
 </div>
 
 <script>
-  // Настройки Firebase (замени на свои)
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+let clicks = 0;          // количество кликов
+let coins = 0;           // валюта для магазина
+let clickValue = 1;      // сколько даёт один клик
+let autoClickValue = 0;  // сколько добавляет автоклик
+let upgradeClickCost = 10;
+let autoClickCost = 50;
 
-  // Инициализация Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-  const counterRef = db.ref('clicks');
+// Обновление счётчика
+function updateDisplay() {
+    document.getElementById('counter').innerText = Clicks: ${clicks} | Coins: ${coins};
+    document.getElementById('upgradeClick').innerText = Upgrade Click (+1) - ${upgradeClickCost} Coins;
+    document.getElementById('autoClick').innerText = Auto Click (+1/sec) - ${autoClickCost} Coins;
+}
 
-  const counterEl = document.getElementById('counter');
-  const clickBtn = document.getElementById('clickBtn');
+// Клик по кнопке
+document.getElementById('clickBtn').addEventListener('click', () => {
+    clicks += clickValue;
+    coins += clickValue;
+    updateDisplay();
+});
 
-  // Обновление счётчика при изменении в БД
-  counterRef.on('value', snapshot => {
-    const value = snapshot.val() || 0;
-    counterEl.innerText = value;
-  });
+// Покупка улучшения клика
+document.getElementById('upgradeClick').addEventListener('click', () => {
+    if(coins >= upgradeClickCost){
+        coins -= upgradeClickCost;
+        clickValue += 1;
+        upgradeClickCost = Math.floor(upgradeClickCost * 1.5);
+        updateDisplay();
+    } else {
+        alert("Not enough coins!");
+    }
+});
 
-  // Клик по кнопке
-  clickBtn.addEventListener('click', () => {
-    counterRef.transaction(current => {
-      return (current || 0) + 1;
-    });
-  });
+// Покупка автоклика
+document.getElementById('autoClick').addEventListener('click', () => {
+    if(coins >= autoClickCost){
+        coins -= autoClickCost;
+        autoClickValue += 1;
+        autoClickCost = Math.floor(autoClickCost * 1.5);
+        updateDisplay();
+    } else {
+        alert("Not enough coins!");
+    }
+});
+
+// Автоклик каждую секунду
+setInterval(() => {
+    clicks += autoClickValue;
+    coins += autoClickValue;
+    updateDisplay();
+}, 1000);
+
+updateDisplay();
 </script>
 
 </body>
