@@ -4,53 +4,57 @@
 <meta charset="UTF-8">
 <title>Advanced Clicker</title>
 <style>
-body { background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; justify-content:center; align-items:flex-start; padding:20px; }
-.container { width:400px; background:#2a2a3f; padding:20px; border-radius:12px; margin-right:20px; }
-button, input, select { width:100%; padding:10px; margin:5px 0; border:none; border-radius:6px; font-size:16px; }
-button { background:#4e4eff; color:#fff; cursor:pointer; }
-button:hover { background:#6f6fff; }
-#score { font-size:32px; text-align:center; margin:10px 0; }
-.list { max-height:150px; overflow-y:auto; border:1px solid #555; border-radius:6px; padding:5px; margin-bottom:10px; }
-.item { padding:5px; border-bottom:1px solid #444; display:flex; align-items:center; }
-.item img { width:24px; height:24px; border-radius:50%; margin-right:8px; }
-.hidden { display:none; }
-#menu button { width:32%; display:inline-block; margin:5px 1%; }
+body { margin:0; background:#1e1e2f; color:#fff; font-family:sans-serif; display:flex; height:100vh; }
+#menu { width:100px; background:#2a2a3f; display:flex; flex-direction:column; align-items:center; padding:10px; }
+#menu button { width:80px; height:80px; margin:5px 0; border:none; border-radius:12px; font-size:14px; cursor:pointer; background:#4e4eff; color:#fff; transition:0.2s; }
+#menu button:hover { background:#6f6fff; transform:scale(1.05); }
+#game { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; }
+#score { font-size:48px; margin-bottom:20px; transition: transform 0.2s; }
+#clickBtn { width:200px; height:200px; border-radius:50%; border:none; background:#ff5050; color:#fff; font-size:24px; cursor:pointer; transition: transform 0.1s; }
+.panel { position:absolute; top:100px; width:300px; background:#2a2a3f; border-radius:12px; padding:10px; display:none; }
+.panel h3 { margin:0 0 10px 0; }
+.panel button { width:100%; margin:5px 0; }
+.item { display:flex; align-items:center; margin:3px 0; }
+.item img { width:32px; height:32px; border-radius:50%; margin-right:8px; }
+#loginScreen { position:absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; background:#1e1e2f; flex-direction:column; }
+#loginScreen input, #loginScreen button { margin:5px; padding:10px; border-radius:6px; border:none; font-size:16px; }
+#loginScreen button { background:#4e4eff; color:#fff; cursor:pointer; }
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
 </head>
 <body>
 
 <!-- Login Screen -->
-<div class="container" id="loginScreen">
+<div id="loginScreen">
 <h1>Вход / Регистрация</h1>
 <input type="text" id="nickname" placeholder="Введите ник">
 <button id="registerBtn">Зарегистрироваться</button>
 <button id="googleLogin">Войти через Google</button>
 </div>
 
-<!-- Game Screen -->
-<div class="container hidden" id="gameScreen">
-<h2 id="welcome"></h2>
-<div id="score">0</div>
-
-<div id="menu">
-<button id="clickBtn">Клик!</button>
-<button id="upgradeBtn">Апгрейды</button>
+<!-- Menu -->
+<div id="menu" class="hidden">
+<button id="leadersBtn">Лидеры</button>
+<button id="upgradesBtn">Апгрейды</button>
 <button id="profileBtn">Профиль</button>
 </div>
 
-<!-- Panels -->
-<div id="upgradesPanel" class="hidden">
-<h3>Апгрейды</h3>
-<button id="autoClickBtn">Автоклик (+1/сек) — 50 очков</button>
-<button id="bonusClickBtn">Бонус клик (+1 клик/клик) — 100 очков</button>
-</div>
+<!-- Game Area -->
+<div id="game" class="hidden">
+<div id="score">0</div>
+<button id="clickBtn">Клик!</button>
 
-<div id="profilePanel" class="hidden">
-<h3>Кастомизация профиля</h3>
+<!-- Panels -->
+<div id="leadersPanel" class="panel"><h3>Лидерборд</h3><div id="leadersList"></div></div>
+<div id="upgradesPanel" class="panel"><h3>Апгрейды</h3>
+<button id="autoClickBtn">Автоклик (+1/сек) — 50</button>
+<button id="bonusClickBtn">Бонус клик (+1/клик) — 100</button>
+</div>
+<div id="profilePanel" class="panel"><h3>Профиль</h3>
 <input type="text" id="customNick" placeholder="Новый ник">
 <select id="colorSelect">
 <option value="#fff">Белый</option>
@@ -61,16 +65,9 @@ button:hover { background:#6f6fff; }
 </select>
 <button id="saveProfileBtn">Сохранить</button>
 </div>
-
-<h3>Игроки онлайн</h3>
-<div class="list" id="online"></div>
-
-<h3>Лидерборд</h3>
-<div class="list" id="leaders"></div>
 </div>
 
 <script>
-// ---------------- Firebase ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyB7d3kYeYEcTUy8tz-hKbYMw5f5zbRH6Ug",
   authDomain: "clicker-3044c.firebaseapp.com",
@@ -91,121 +88,125 @@ let photo = null;
 let score = 0;
 let autoClick = false;
 let bonusPerClick = 1;
+let autoClickCost = 50;
+let bonusClickCost = 100;
 
-// ---------------- Check saved account ----------------
-if(localStorage.getItem("clickerUser")) {
-    const saved = JSON.parse(localStorage.getItem("clickerUser"));
-    user = saved.user;
-    photo = saved.photo;
-    score = saved.score || 0;
-    showGameScreen();
-}
-
-// ---------------- Functions ----------------
-function showGameScreen() {
-    document.getElementById("loginScreen").classList.add("hidden");
-    document.getElementById("gameScreen").classList.remove("hidden");
-    document.getElementById("welcome").innerText = "Игрок: " + user;
+// ---------------- Login ----------------
+function startGame(){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("menu").classList.remove("hidden");
+    document.getElementById("game").classList.remove("hidden");
     document.getElementById("score").innerText = score;
+    document.getElementById("welcome")?.remove();
     appearOnline();
     listenOnline();
     listenLeaderboard();
 }
 
+// Load saved
+if(localStorage.getItem("clickerUser")){
+    const saved = JSON.parse(localStorage.getItem("clickerUser"));
+    user = saved.user; photo = saved.photo; score = saved.score || 0;
+    autoClick = saved.autoClick || false;
+    bonusPerClick = saved.bonusPerClick || 1;
+    autoClickCost = saved.autoClickCost || 50;
+    bonusClickCost = saved.bonusClickCost || 100;
+    startGame();
+}
+
 // ---------------- Registration ----------------
 document.getElementById("registerBtn").addEventListener("click",()=>{
-    let nick = document.getElementById("nickname").value.trim();
-    if(!nick) nick = "Игрок"+Math.floor(Math.random()*1000);
-    user = nick;
-    photo = null;
-    score = 0;
-    localStorage.setItem("clickerUser", JSON.stringify({user, photo, score}));
-    db.ref("users/"+user).set({score, photo});
-    showGameScreen();
+    let nick=document.getElementById("nickname").value.trim();
+    if(!nick) nick="Игрок"+Math.floor(Math.random()*1000);
+    user = nick; photo=null; score=0;
+    saveAll();
+    startGame();
 });
 
 // ---------------- Google Login ----------------
-document.getElementById("googleLogin").addEventListener("click", ()=>{
+document.getElementById("googleLogin").addEventListener("click",()=>{
     const provider = new firebase.auth.GoogleAuthProvider();
     auth.signInWithPopup(provider).then(result=>{
         user = result.user.displayName || "Игрок"+Math.floor(Math.random()*1000);
-        photo = result.user.photoURL;
-        score = 0;
-        localStorage.setItem("clickerUser", JSON.stringify({user, photo, score}));
-        db.ref("users/"+user).set({score, photo});
-        showGameScreen();
+        photo = result.user.photoURL; score=0;
+        saveAll();
+        startGame();
     }).catch(err=>alert("Ошибка Google: "+err.message));
 });
 
 // ---------------- Click ----------------
 document.getElementById("clickBtn").addEventListener("click",()=>{
-    if(!user) return;
-    score += bonusPerClick;
-    document.getElementById("score").innerText = score;
-    saveScore();
+    score+=bonusPerClick;
+    document.getElementById("score").innerText=score;
+    saveAll();
+    animateScore();
 });
-
-// ---------------- Save Score ----------------
-function saveScore(){
-    db.ref("users/"+user).set({score, photo});
-    localStorage.setItem("clickerUser", JSON.stringify({user, photo, score}));
+function animateScore(){
+    const scoreEl = document.getElementById("score");
+    scoreEl.style.transform="scale(1.3)";
+    setTimeout(()=>scoreEl.style.transform="scale(1)",100);
 }
 
 // ---------------- Menu ----------------
-document.getElementById("upgradeBtn").addEventListener("click",()=>{
-    document.getElementById("upgradesPanel").classList.toggle("hidden");
-    document.getElementById("profilePanel").classList.add("hidden");
-});
-document.getElementById("profileBtn").addEventListener("click",()=>{
-    document.getElementById("profilePanel").classList.toggle("hidden");
-    document.getElementById("upgradesPanel").classList.add("hidden");
-});
+document.getElementById("leadersBtn").addEventListener("click",()=>showPanel("leadersPanel"));
+document.getElementById("upgradesBtn").addEventListener("click",()=>showPanel("upgradesPanel"));
+document.getElementById("profileBtn").addEventListener("click",()=>showPanel("profilePanel"));
+function showPanel(id){
+    ["leadersPanel","upgradesPanel","profilePanel"].forEach(p=>{
+        document.getElementById(p).style.display=(p===id)?"block":"none";
+    });
+}
 
 // ---------------- Upgrades ----------------
 document.getElementById("autoClickBtn").addEventListener("click",()=>{
-    if(score>=50){ score-=50; autoClick=true; startAutoClick(); saveScore(); }
+    if(score>=autoClickCost){ score-=autoClickCost; autoClick=true; autoClickCost*=2; startAutoClick(); updateUpgradeText(); saveAll(); }
 });
 document.getElementById("bonusClickBtn").addEventListener("click",()=>{
-    if(score>=100){ score-=100; bonusPerClick++; saveScore(); }
+    if(score>=bonusClickCost){ score-=bonusClickCost; bonusPerClick++; bonusClickCost*=2; updateUpgradeText(); saveAll(); }
 });
-function startAutoClick(){
-    setInterval(()=>{ if(autoClick){ score+=1; document.getElementById("score").innerText=score; saveScore(); } },1000);
+function startAutoClick(){ if(!window.autoClickInterval){ window.autoClickInterval=setInterval(()=>{ score++; document.getElementById("score").innerText=score; saveAll(); animateScore(); },1000); } }
+function updateUpgradeText(){
+    document.getElementById("autoClickBtn").innerText=`Автоклик (+1/сек) — ${autoClickCost}`;
+    document.getElementById("bonusClickBtn").innerText=`Бонус клик (+1/клик) — ${bonusClickCost}`;
 }
 
 // ---------------- Profile ----------------
 document.getElementById("saveProfileBtn").addEventListener("click",()=>{
-    const newNick = document.getElementById("customNick").value.trim();
-    if(newNick) user = newNick;
-    const color = document.getElementById("colorSelect").value;
-    document.getElementById("score").style.color = color;
-    saveScore();
+    const newNick=document.getElementById("customNick").value.trim();
+    if(newNick) user=newNick;
+    const color=document.getElementById("colorSelect").value;
+    document.getElementById("score").style.color=color;
+    saveAll();
 });
+
+// ---------------- Save ----------------
+function saveAll(){
+    db.ref("users/"+user).set({score, photo, autoClick, bonusPerClick, autoClickCost, bonusClickCost});
+    localStorage.setItem("clickerUser", JSON.stringify({user, photo, score, autoClick, bonusPerClick, autoClickCost, bonusClickCost}));
+}
 
 // ---------------- Online ----------------
 function appearOnline(){ setInterval(()=> db.ref("online/"+user).set(Date.now()),1000); }
 function listenOnline(){
     db.ref("online").on("value",snap=>{
-        const data = snap.val()||{};
-        const now = Date.now();
-        let html="";
+        const data=snap.val()||{}; const now=Date.now(); let html="";
         for(let u in data) if(now-data[u]<3000) html+=`<div class="item">${u}</div>`;
-        document.getElementById("online").innerHTML = html;
+        document.getElementById("online").innerHTML=html;
     });
 }
 
 // ---------------- Leaderboard ----------------
 function listenLeaderboard(){
     db.ref("users").on("value",snap=>{
-        const data = snap.val()||{};
-        let arr=[];
+        const data=snap.val()||{}; let arr=[];
         for(let u in data) arr.push({name:u,score:data[u].score||0,photo:data[u].photo||null});
         arr.sort((a,b)=>b.score-a.score);
         let html="";
         arr.forEach((p,i)=>{
-            let icon = p.photo ? `<img src="${p.photo}">` : "";
+            let icon=p.photo?`<img src="${p.photo}">`:"";
             html+=`<div class="item">${icon}${i+1}. ${p.name} — ${p.score}</div>`;
         });
-        document.getElementById("leaders").innerHTML=html;
+        document.getElementById("leadersList").innerHTML=html;
     });
 }
 </script>
