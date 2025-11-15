@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Online Clicker</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div style="text-align:center; margin-top:50px;">
+    <div id="counter" style="font-size:30px;">0</div>
+    <button id="clickBtn" style="font-size:20px; margin-top:20px;">Click Me</button>
+</div>
+
+<script>
+  // Настройки Firebase (замени на свои)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Инициализация Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const counterRef = db.ref('clicks');
+
+  const counterEl = document.getElementById('counter');
+  const clickBtn = document.getElementById('clickBtn');
+
+  // Обновление счётчика при изменении в БД
+  counterRef.on('value', snapshot => {
+    const value = snapshot.val() || 0;
+    counterEl.innerText = value;
+  });
+
+  // Клик по кнопке
+  clickBtn.addEventListener('click', () => {
+    counterRef.transaction(current => {
+      return (current || 0) + 1;
+    });
+  });
+</script>
+
+</body>
+</html>
