@@ -1,39 +1,131 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Clicker Safe</title>
-<style>
-body{margin:0;font-family:sans-serif;background:#1e1e2f;color:#fff;display:flex;height:100vh;}
-#menu{width:120px;background:#2a2a3f;display:flex;flex-direction:column;align-items:center;padding:10px;}
-#menu button{width:100px;height:60px;margin:10px 0;border:none;border-radius:12px;font-size:14px;cursor:pointer;background:#4e4eff;color:#fff;transition:0.2s;}
-#menu button:hover{background:#6f6fff;transform:scale(1.05);}
-#game{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
-#score{font-size:48px;margin-bottom:20px;transition:transform 0.2s;}
-#clickBtn{width:200px;height:200px;border-radius:50%;border:none;background:#ff5050;color:#fff;font-size:24px;cursor:pointer;transition:transform 0.1s;}
-#clickBtn:active{transform: scale(0.95);}
-.panel{position:absolute;top:50px;right:20px;width:300px;background:#2a2a3f;border-radius:12px;padding:15px;display:none;box-shadow:0 0 15px #000;z-index:10;}
-.panel h3{margin:0 0 10px 0;display:flex;justify-content:space-between;align-items:center;}
-.panel h3 span.close{cursor:pointer;font-size:20px;color:#f55;}
-.panel button{width:100%;margin:5px 0;border-radius:8px;background:#4e4eff;color:#fff;border:none;cursor:pointer;transition:0.2s;}
-.panel button:hover{background:#6f6fff;}
-.item{display:flex;align-items:center;margin:5px 0;}
-.item img{width:32px;height:32px;border-radius:50%;margin-right:8px;}
-#loginScreen{position:absolute;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:#1e1e2f;flex-direction:column;z-index:20;}
-#loginScreen input,#loginScreen button{margin:5px;padding:10px;border-radius:6px;border:none;font-size:16px;}
-#loginScreen button{background:#4e4eff;color:#fff;cursor:pointer;transition:0.2s;}
-#loginScreen button:hover{background:#6f6fff;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пиксельбатл</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #282c34;
+        }
 
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+        #game-container {
+            border: 2px solid white;
+            display: inline-block;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
 </head>
 <body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database.js"></script>
+    <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project-id.firebaseapp.com",
+            databaseURL: "https://clicker-3044c-default-rtdb.firebaseio.com/",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.appspot.com",
+            messagingSenderId: "your-sender-id",
+            appId: "your-app-id"
+        };
 
-<div id="loginScreen">
-<h1>Вход / Регистрация</h1>
-<input type="text" id="nickname" placeholder="Введите ник">
-<button id="registerBtn">Начать игру</button>
+        // Инициализация Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Инициализация канваса
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Структуры игрока
+        let players = {};
+        let playerId = Date.now().toString(); // уникальный id для игрока
+        let player = {
+            x: 100,
+            y: 100,
+            width: 20,
+            height: 20,
+            color: 'red'
+        };
+
+        // Отображение игроков
+        function drawPlayers() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Очистка канваса
+            for (let id in players) {
+                let p = players[id];
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+            }
+        }
+
+        // Обновление позиции игрока на Firebase
+        function updatePlayerPosition() {
+            firebase.database().ref('players/' + playerId).set({
+                x: player.x,
+                y: player.y,
+                color: player.color
+            });
+        }
+
+        // Получение данных всех игроков из Firebase
+        firebase.database().ref('players').on('value', (snapshot) => {
+            players = snapshot.val() || {};
+            drawPlayers();
+        });
+
+        // Обработчик движения игрока
+        document.addEventListener('keydown', (e) => {
+            const speed = 5;
+            switch (e.key) {
+                case 'ArrowUp':
+                    player.y -= speed;
+                    break;
+                case 'ArrowDown':
+                    player.y += speed;
+                    break;
+                case 'ArrowLeft':
+                    player.x -= speed;
+                    break;
+                case 'ArrowRight':
+                    player.x += speed;
+                    break;
+            }
+            updatePlayerPosition();
+        });
+
+        // Первоначальная установка игрока в Firebase
+        firebase.database().ref('players/' + playerId).set({
+            x: player.x,
+            y: player.y,
+            color: player.color
+        });
+
+        // Постоянный рендеринг игры
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
+            drawPlayers();
+        }
+
+        gameLoop(); // Начало игрового цикла
+    </script>
+</body>
+</html>
 </div>
 
 <div id="menu" class="hidden">
@@ -167,3 +259,4 @@ function appearOnline(){ setInterval(()=>db.ref("online/"+user).set(Date.now()),
 </script>
 </body>
 </html>
+
