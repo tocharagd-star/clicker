@@ -44,42 +44,45 @@ const firebaseURL = "https://aitube-8e681-default-rtdb.firebaseio.com/clicker.js
 const counterEl = document.getElementById("counter");
 const button = document.getElementById("clickButton");
 
-// Получаем значение счётчика
-async function getCounter() {
-  const res = await fetch(firebaseURL);
-  const data = await res.json();
-  if(data && data.value != null) return data.value;
-  return 0;
+let localCounter = 0;
+
+// Получаем значение счётчика с сервера
+async function fetchCounter() {
+  try {
+    const res = await fetch(firebaseURL);
+    const data = await res.json();
+    if (data && data.value != null) localCounter = data.value;
+    counterEl.textContent = "Clicks: " + localCounter;
+  } catch(e) {
+    console.log("Error fetching counter:", e);
+  }
 }
 
-// Обновляем значение счётчика
-async function updateCounter(value) {
-  await fetch(firebaseURL, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ value })
-  });
+// Отправляем значение счётчика на сервер
+async function pushCounter(value) {
+  try {
+    await fetch(firebaseURL, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value })
+    });
+  } catch(e) {
+    console.log("Error pushing counter:", e);
+  }
 }
 
-// Обновляем текст на экране
-async function refreshCounter() {
-  const value = await getCounter();
-  counterEl.textContent = "Clicks: " + value;
-}
+// Обновление каждые 1 секунду с сервера для синхронизации
+setInterval(fetchCounter, 1000);
 
-// Клик
-button.addEventListener("click", async () => {
-  let value = await getCounter();
-  value += 1;
-  await updateCounter(value);
-  counterEl.textContent = "Clicks: " + value;
+// Клик — увеличиваем локально и сразу отображаем
+button.addEventListener("click", () => {
+  localCounter += 1;
+  counterEl.textContent = "Clicks: " + localCounter;
+  pushCounter(localCounter); // Отправляем на сервер, но не ждём ответа
 });
 
-// Автообновление каждые 2 секунды
-setInterval(refreshCounter, 2000);
-
-// Первичное обновление
-refreshCounter();
+// Первичное получение
+fetchCounter();
 </script>
 
 </body>
