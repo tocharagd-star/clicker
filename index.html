@@ -1,487 +1,440 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>HTML Minecraft - Multiplayer Prototype</title>
-<style>
-  :root{--ui-bg:rgba(10,10,10,0.6);--panel:#ffffff;--accent:#2b90ff;}
-  html,body{height:100%;margin:0;font-family:Inter,UI-sans-serif,system-ui,Arial; background:#87CEEB;}
-  #canvas{display:block;width:100vw;height:100vh; touch-action:none;}
-  /* HUD */
-  #hud{position:fixed;left:0;right:0;top:0;pointer-events:none;z-index:50;}
-  .top-center{position:relative;margin:10px auto;width:fit-content;pointer-events:auto;}
-  .panel {background:var(--ui-bg);backdrop-filter:blur(6px);color:white;padding:8px 12px;border-radius:10px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,0.25)}
-  #score {font-weight:700;font-size:18px;}
-  .btn {background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);padding:8px 10px;border-radius:8px;color:white;cursor:pointer;}
-  .btn:active{transform:translateY(1px);}
-  /* Left square buttons */
-  #leftBar{position:fixed;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:60;pointer-events:auto;}
-  .square{width:56px;height:56px;border-radius:8px;background:var(--ui-bg);display:flex;align-items:center;justify-content:center;color:white;border:1px solid rgba(255,255,255,0.07);cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,0.2)}
-  .square img{width:30px;height:30px;object-fit:cover;border-radius:6px;}
-  /* Modals */
-  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;background:var(--panel);color:#111;padding:12px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.35);z-index:80;display:none;}
-  .modal.visible{display:block;}
-  .modal h3{margin:0 0 8px 0;}
-  .close{position:absolute;right:8px;top:8px;cursor:pointer;font-weight:700;color:#666}
-  /* Inventory grid */
-  .inventory-grid{display:grid;grid-template-columns:repeat(5,56px);gap:8px;}
-  .slot{width:56px;height:56px;border-radius:8px;background:#f3f3f3;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-weight:600}
-  .hotbar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;display:flex;gap:8px;z-index:60;pointer-events:auto;}
-  .hotbar .slot{width:56px;height:56px;background:rgba(255,255,255,0.95);border-radius:8px;display:flex;align-items:center;justify-content:center}
-  /* Joystick & mobile controls */
-  #touch-controls{position:fixed;left:12px;bottom:12px;z-index:60;pointer-events:auto;}
-  .joystick {width:110px;height:110px;border-radius:50%;background:rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;position:relative;touch-action:none}
-  .joy-knob{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.95);transform:translate(0,0);transition:transform 0.02s;}
-  #mobile-actions{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;z-index:60;pointer-events:auto;}
-  .action-btn{width:64px;height:64px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;box-shadow:0 8px 20px rgba(43,144,255,0.25);cursor:pointer}
-  /* Player name tag */
-  .nameTag{font-size:12px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,0.6);color:white;white-space:nowrap}
-  /* Servers list */
-  #serversBox{position:fixed;right:12px;top:12px;z-index:60;background:var(--ui-bg);padding:8px;border-radius:10px;color:white}
-  #serversBox button{display:block;width:160px;text-align:left;margin-top:6px}
-  /* Responsive tweaks */
-  @media (max-width:600px){
-    .top-center{margin:6px}
-    .panel{padding:6px 8px}
-    .square{width:48px;height:48px}
-    .slot{width:48px;height:48px}
-    .hotbar .slot{width:48px;height:48px}
-    .action-btn{width:56px;height:56px}
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AiTube</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body { background: #000; color: #fff; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header { background: #111; padding: 15px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 24px; font-weight: bold; color: #f00; }
+    .nav button { background: #333; color: #fff; border: none; padding: 8px 16px; margin-left: 10px; cursor: pointer; border-radius: 4px; }
+    .nav button:hover { background: #555; }
+
+    .auth-body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    .auth-container { background: #222; padding: 30px; border-radius: 10px; width: 350px; text-align: center; }
+    .auth-container input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; }
+    .auth-container button { width: 100%; padding: 12px; background: #f00; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+    .auth-container a { color: #0af; }
+
+    .hidden { display: none; }
+
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+    .video-card { background: #111; border-radius: 10px; overflow: hidden; cursor: pointer; }
+    .video-card video { width: 100%; height: 180px; object-fit: cover; }
+    .video-info { padding: 12px; }
+    .video-title { font-weight: bold; margin-bottom: 5px; }
+    .video-channel { font-size: 14px; color: #aaa; }
+    .video-actions { display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px; }
+    .video-actions button { background: none; border: none; color: #aaa; cursor: pointer; }
+    .video-actions button.liked { color: #0af; }
+    .video-actions button.disliked { color: #f55; }
+
+    .comments { margin-top: 10px; }
+    .comment { background: #222; padding: 10px; border-radius: 5px; margin-bottom: 8px; font-size: 14px; }
+    .comment-input { display: flex; margin-top: 10px; }
+    .comment-input input { flex: 1; padding: 10px; border: none; border-radius: 5px 0 0 5px; }
+    .comment-input button { padding: 10px 15px; background: #f00; color: #fff; border: none; border-radius: 0 5px 5px 0; cursor: pointer; }
+
+    .profile-info { text-align: center; margin-bottom: 30px; }
+    .profile-info img { width: 100px; height: 100px; border-radius: 50%; background: #333; margin-bottom: 10px; }
+    .subscribe-btn { background: #f00; color: #fff; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; }
+    .subscribed { background: #333; }
+
+    .upload-form { background: #111; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+    .upload-form input, .upload-form textarea { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; }
+    .upload-form button { background: #f00; color: #fff; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; }
+    progress { width: 100%; height: 10px; margin-top: 10px; }
+
+    @media (max-width: 768px) {
+      .video-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-<canvas id="canvas"></canvas>
-
-<!-- HUD -->
-<div id="hud">
-  <div class="top-center">
-    <div class="panel" id="topPanel" style="pointer-events:auto">
-      <div id="score">Сервер: —</div>
-      <button class="btn" id="btnCenterAction">Действие</button>
+  <!-- АВТОРИЗАЦИЯ -->
+  <div id="authSection" class="auth-body">
+    <div class="auth-container">
+      <h2 id="authTitle">Вход</h2>
+      <input type="email" id="authEmail" placeholder="Email" />
+      <input type="password" id="authPassword" placeholder="Пароль" />
+      <input type="text" id="authUsername" placeholder="Имя пользователя" class="hidden" />
+      <button id="authBtn">Войти</button>
+      <p id="authToggle">Нет аккаунта? <a href="#" id="toggleLink">Зарегистрироваться</a></p>
     </div>
   </div>
-</div>
 
-<!-- Left vertical squares -->
-<div id="leftBar">
-  <div class="square" id="btnMenu" title="Меню">☰</div>
-  <div class="square" id="btnInv" title="Инвентарь">🎒</div>
-  <div class="square" id="btnLeaders" title="Лидеры">🏆</div>
-</div>
+  <!-- ГЛАВНАЯ -->
+  <div id="mainApp" class="hidden">
+    <header>
+      <div class="logo">AiTube</div>
+      <div class="nav">
+        <button id="uploadNavBtn" class="btn">Загрузить</button>
+        <button id="profileNavBtn" class="btn">Профиль</button>
+        <button id="logoutBtn" class="btn">Выйти</button>
+      </div>
+    </header>
 
-<!-- Servers box -->
-<div id="serversBox"></div>
+    <div class="container">
+      <!-- Загрузка видео -->
+      <div id="uploadSection" class="upload-form hidden">
+        <h2>Загрузить видео</h2>
+        <input type="text" id="videoTitle" placeholder="Название видео" />
+        <textarea id="videoDesc" placeholder="Описание"></textarea>
+        <input type="file" id="videoFile" accept="video/*" />
+        <button id="uploadVideoBtn">Загрузить</button>
+        <progress id="uploadProgress" value="0" max="100"></progress>
+      </div>
 
-<!-- Modals -->
-<div class="modal" id="menuModal">
-  <span class="close" id="closeMenu">✕</span>
-  <h3>Меню</h3>
-  <div style="display:flex;flex-direction:column;gap:8px">
-    <button class="btn" id="leaveServer">Покинуть сервер</button>
-    <button class="btn" id="createServerBtn">Создать сервер</button>
+      <!-- Главная страница -->
+      <div id="homeSection">
+        <div id="videoGrid" class="video-grid"></div>
+      </div>
+
+      <!-- Профиль -->
+      <div id="profileSection" class="hidden">
+        <div id="profileInfo" class="profile-info"></div>
+        <h3>Мои видео</h3>
+        <div id="myVideos" class="video-grid"></div>
+      </div>
+    </div>
   </div>
-</div>
 
-<div class="modal" id="invModal">
-  <span class="close" id="closeInv">✕</span>
-  <h3>Инвентарь</h3>
-  <div class="inventory-grid" id="invGrid"></div>
-</div>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-<div class="modal" id="leadersModal">
-  <span class="close" id="closeLeaders">✕</span>
-  <h3>Лидеры</h3>
-  <div id="leadersList" style="display:flex;flex-direction:column;gap:8px"></div>
-</div>
+  <script type="module">
+    // === КОНФИГУРАЦИЯ FIREBASE ===
+    const firebaseConfig = {
+      databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/"
+    };
 
-<!-- Hotbar -->
-<div class="hotbar" id="hotbar"></div>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
 
-<!-- Touch controls -->
-<div id="touch-controls">
-  <div class="joystick" id="joystick">
-    <div class="joy-knob" id="knob"></div>
-  </div>
-</div>
+    let currentUser = null;
+    let currentVideoId = null;
 
-<div id="mobile-actions">
-  <div class="action-btn" id="btnJump">↑</div>
-  <div class="action-btn" id="btnInteract">⛏</div>
-</div>
+    // === ЭЛЕМЕНТЫ ===
+    const authSection = document.getElementById('authSection');
+    const mainApp = document.getElementById('mainApp');
+    const authTitle = document.getElementById('authTitle');
+    const authBtn = document.getElementById('authBtn');
+    const authToggle = document.getElementById('authToggle');
+    const toggleLink = document.getElementById('toggleLink');
+    const authUsername = document.getElementById('authUsername');
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    const homeSection = document.getElementById('homeSection');
+    const profileSection = document.getElementById('profileSection');
+    const uploadSection = document.getElementById('uploadSection');
 
-<script>
-/* ========= FIREBASE ========== */
-firebase.initializeApp({ databaseURL: "https://clicker-3044c-default-rtdb.firebaseio.com/" });
-const db = firebase.database();
+    const uploadNavBtn = document.getElementById('uploadNavBtn');
+    const profileNavBtn = document.getElementById('profileNavBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-/* ========= GLOBAL STATE ========= */
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = innerWidth;
-let H = canvas.height = innerHeight;
+    // === ПЕРЕКЛЮЧЕНИЕ АВТОРИЗАЦИИ ===
+    let isLogin = true;
+    toggleLink.onclick = (e) => {
+      e.preventDefault();
+      isLogin = !isLogin;
+      authTitle.textContent = isLogin ? 'Вход' : 'Регистрация';
+      authBtn.textContent = isLogin ? 'Войти' : 'Зарегистрироваться';
+      authToggle.innerHTML = isLogin 
+        ? 'Нет аккаунта? <a href="#" id="toggleLink">Зарегистрироваться</a>' 
+        : 'Уже есть аккаунт? <a href="#" id="toggleLink">Войти</a>';
+      authUsername.classList.toggle('hidden');
+      document.getElementById('toggleLink').onclick = arguments.c[0];
+    };
 
-window.addEventListener('resize', ()=>{ W = canvas.width = innerWidth; H = canvas.height = innerHeight; });
+    // === АВТОРИЗАЦИЯ ===
+    authBtn.onclick = () => {
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const username = document.getElementById('authUsername').value;
 
-const playerID = "p" + Math.random().toString(36).slice(2,9);
-let playerName = "User_" + playerID.slice(-4);
-let serverID = null;
+      if (isLogin) {
+        auth.signInWithEmailAndPassword(email, password)
+          .then(cred => loadUser(cred.user))
+          .catch(err => alert(err.message));
+      } else {
+        if (!username) return alert("Введите имя пользователя");
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(cred => {
+            return db.ref('users/' + cred.user.uid).set({
+              username, email, subscribers: 0, subscribedTo: {}
+            }).then(() => loadUser(cred.user));
+          })
+          .catch(err => alert(err.message));
+      }
+    };
 
-let world = []; // array of blocks {x,y,type}
-let players = {}; // players synced from firebase
-let local = {x:0,y:0,vx:0,vy:0,onGround:false,dir:0}; // dir for camera
+    // === ВЫХОД ===
+    logoutBtn.onclick = () => {
+      auth.signOut().then(() => {
+        currentUser = null;
+        mainApp.classList.add('hidden');
+        authSection.classList.remove('hidden');
+      });
+    };
 
-/* HOTBAR / INVENTORY */
-let inventory = new Array(10).fill(null);
-inventory[0] = {id:'dirt',count:64};
-inventory[1] = {id:'grass',count:12};
-let selectedSlot = 0;
-
-/* UI refs */
-const scoreEl = document.getElementById('score');
-const serversBox = document.getElementById('serversBox');
-const btnCenterAction = document.getElementById('btnCenterAction');
-
-/* ========= WORLD GENERATION ========= */
-function generateFlat() {
-  world = [];
-  // ground line
-  for (let x=-80;x<=80;x++){
-    world.push({x:x,y:6,type:1}); // dirt
-    if (Math.random() < 0.05) world.push({x:x,y:5,type:2}); // grass topper sometimes
-  }
-}
-
-/* ========= RENDER ========= */
-function worldToScreen(wx, wy) {
-  const scale = 28;
-  const sx = W/2 + (wx - local.x) * scale;
-  const sy = H/2 + (wy - local.y) * scale;
-  return {sx, sy, scale};
-}
-
-function draw() {
-  ctx.clearRect(0,0,W,H);
-  // sky
-  const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#87CEEB'); g.addColorStop(1,'#a8d0ff');
-  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-
-  // blocks
-  for (let b of world){
-    const {sx,sy,scale} = worldToScreen(b.x,b.y);
-    if (sx + scale < -100 || sx - scale > W + 100) continue;
-    ctx.fillStyle = (b.type===1)?'#8B5A2B':'#5BC13A';
-    ctx.fillRect(sx, sy, scale, scale);
-    // outline
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.strokeRect(sx, sy, scale, scale);
-  }
-
-  // players
-  for (let id in players){
-    const p = players[id];
-    const {sx,sy,scale} = worldToScreen(p.x, p.y);
-    // body
-    ctx.fillStyle = (id===playerID)?'#ffd54a':'#e03e3e';
-    ctx.fillRect(sx-10, sy-30, 20, 30);
-    // head
-    ctx.fillStyle = '#fff'; ctx.fillRect(sx-10, sy-46, 20, 16);
-    // name tag
-    ctx.font = '12px Inter, Arial'; ctx.textAlign='center';
-    ctx.fillStyle = 'black';
-    ctx.globalAlpha = 0.6;
-    const nameW = ctx.measureText(p.name||'').width + 10;
-    ctx.fillRect(sx - nameW/2, sy-58, nameW, 18);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle='white'; ctx.fillText(p.name||'', sx, sy-45 + 2);
-  }
-
-  // center cross / HUD debug
-  requestAnimationFrame(draw);
-}
-requestAnimationFrame(draw);
-
-/* ========= PHYSICS & LOCAL MOVEMENT ========= */
-const GRAV = 0.05;
-setInterval(()=>{
-  // apply gravity
-  local.vy += GRAV;
-  local.x += local.vx;
-  local.y += local.vy;
-
-  // simple collision with world blocks underfoot
-  let standing = false;
-  for (let b of world){
-    if (Math.abs(local.x - b.x) < 0.5 && Math.abs(local.y - b.y) < 1){
-      local.y = b.y - 1; local.vy = 0; standing = true; break;
+    // === ЗАГРУЗКА ПОЛЬЗОВАТЕЛЯ ===
+    function loadUser(user) {
+      currentUser = user;
+      db.ref('users/' + user.uid).once('value').then(snap => {
+        const data = snap.val();
+        if (data) currentUser.username = data.username;
+        authSection.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        showHome();
+        loadVideos();
+      });
     }
-  }
-  local.onGround = standing;
 
-  // apply friction
-  local.vx *= 0.98;
+    // === НАВИГАЦИЯ ===
+    uploadNavBtn.onclick = () => {
+      homeSection.classList.add('hidden');
+      profileSection.classList.add('hidden');
+      uploadSection.classList.remove('hidden');
+    };
 
-  // sync position to firebase
-  if (serverID){
-    db.ref(`servers/${serverID}/players/${playerID}`).set({x:local.x,y:local.y,name:playerName,ts:Date.now()});
-  }
-}, 20);
+    profileNavBtn.onclick = () => {
+      homeSection.classList.add('hidden');
+      uploadSection.classList.add('hidden');
+      profileSection.classList.remove('hidden');
+      loadProfile();
+    };
 
-/* ========= INPUT PC ========= */
-const keys = {};
-document.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()] = true; handleHotkeys(e); });
-document.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
-function handleHotkeys(e){
-  if (e.key === '1') selectSlot(0);
-  if (e.key === '2') selectSlot(1);
-  if (e.key === ' ') { if (local.onGround) { local.vy = -6; local.onGround=false; } }
-}
-
-setInterval(()=>{
-  let speed = 0.15;
-  if (keys['a'] || keys['arrowleft']) local.vx = -speed;
-  else if (keys['d'] || keys['arrowright']) local.vx = speed;
-  else local.vx = 0;
-  if ((keys['w'] || keys['arrowup']) && local.onGround){ local.vy = -6; local.onGround=false;}
-}, 16);
-
-/* ========= MOUSE LOOK & Interact ========= */
-let isMouseDown = false;
-let lastMouse = null;
-canvas.addEventListener('mousedown', e=>{ isMouseDown = true; lastMouse = {x:e.clientX,y:e.clientY}; });
-canvas.addEventListener('mouseup', e=>{ isMouseDown = false; lastMouse = null; });
-canvas.addEventListener('mousemove', e=>{
-  if (isMouseDown && lastMouse){
-    const dx = e.clientX - lastMouse.x;
-    // mouse drag moves camera horizontally
-    local.x -= dx / 28;
-    lastMouse = {x:e.clientX,y:e.clientY};
-  }
-});
-btnCenterAction.addEventListener('click', ()=> doInteract());
-
-/* ========= TOUCH JOYSTICK ========= */
-const joystick = document.getElementById('joystick');
-const knob = document.getElementById('knob');
-let joyCenter = {x:0,y:0};
-function getCoords(el){ const r = el.getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2}; }
-function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
-
-joystick.addEventListener('touchstart', e=>{
-  e.preventDefault();
-});
-joystick.addEventListener('touchmove', e=>{
-  const t = e.touches[0];
-  const rect = joystick.getBoundingClientRect();
-  const cx = rect.left + rect.width/2;
-  const cy = rect.top + rect.height/2;
-  let dx = t.clientX - cx;
-  let dy = t.clientY - cy;
-  const max = rect.width/2 - 20;
-  const dist = Math.hypot(dx,dy);
-  const ratio = Math.min(1, max / Math.max(1, dist));
-  dx *= ratio; dy *= ratio;
-  knob.style.transform = `translate(${dx}px, ${dy}px)`;
-
-  // map to movement (horizontal only)
-  const nx = dx / max;
-  local.vx = nx * 0.18;
-});
-joystick.addEventListener('touchend', ()=>{
-  knob.style.transform = `translate(0px,0px)`;
-  local.vx = 0;
-});
-
-/* mobile action buttons */
-document.getElementById('btnJump').addEventListener('click', ()=>{ if (local.onGround){ local.vy = -6; local.onGround=false; } });
-document.getElementById('btnInteract').addEventListener('click', ()=> doInteract());
-
-/* ========= UI: Modals & Buttons ========= */
-const menuModal = document.getElementById('menuModal');
-const invModal = document.getElementById('invModal');
-const leadersModal = document.getElementById('leadersModal');
-
-document.getElementById('btnMenu').addEventListener('click', ()=> menuModal.classList.toggle('visible'));
-document.getElementById('closeMenu').addEventListener('click', ()=> menuModal.classList.remove('visible'));
-document.getElementById('btnInv').addEventListener('click', ()=> { renderInventory(); invModal.classList.toggle('visible'); });
-document.getElementById('closeInv').addEventListener('click', ()=> invModal.classList.remove('visible'));
-document.getElementById('btnLeaders').addEventListener('click', ()=> { renderLeaders(); leadersModal.classList.toggle('visible'); });
-document.getElementById('closeLeaders').addEventListener('click', ()=> leadersModal.classList.remove('visible'));
-
-document.getElementById('createServerBtn').addEventListener('click', ()=> createServer());
-document.getElementById('leaveServer').addEventListener('click', ()=> leaveServer());
-
-/* ========= Inventory rendering ========= */
-const invGrid = document.getElementById('invGrid');
-const hotbar = document.getElementById('hotbar');
-
-function renderInventory(){
-  invGrid.innerHTML = '';
-  for (let i=0;i<10;i++){
-    const s = document.createElement('div'); s.className='slot'; s.dataset.idx=i;
-    s.textContent = inventory[i]? inventory[i].id + ' x' + inventory[i].count : '';
-    s.style.cursor='pointer';
-    s.addEventListener('click', ()=>{ selectSlot(i); renderInventory(); renderHotbar(); });
-    invGrid.appendChild(s);
-  }
-}
-
-function renderHotbar(){
-  hotbar.innerHTML = '';
-  for (let i=0;i<10;i++){
-    const s = document.createElement('div'); s.className='slot';
-    s.style.border = (i===selectedSlot)? `2px solid ${getComputedStyle(document.documentElement).getPropertyValue('--accent')}` : '1px solid #ccc';
-    s.textContent = inventory[i]? inventory[i].id : '';
-    s.addEventListener('click', ()=>{ selectSlot(i); renderHotbar(); renderInventory(); });
-    hotbar.appendChild(s);
-  }
-}
-function selectSlot(i){ selectedSlot = i; }
-
-/* ========= Leaders rendering ========= */
-function renderLeaders(){
-  const list = document.getElementById('leadersList'); list.innerHTML='';
-  const arr = Object.keys(players).map(id=>({id, ...players[id]}));
-  arr.sort((a,b)=> (b.kills||0) - (a.kills||0));
-  for (let p of arr){
-    const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px';
-    const avatar = document.createElement('div'); avatar.style.width='40px'; avatar.style.height='40px'; avatar.style.borderRadius='8px';
-    avatar.style.background = `linear-gradient(135deg,#${hashColor(p.name||p.id).slice(0,6)},#ffffff22)`;
-    avatar.textContent = (p.name||'').slice(0,1).toUpperCase();
-    avatar.style.display='flex'; avatar.style.alignItems='center'; avatar.style.justifyContent='center'; avatar.style.fontWeight='700'; avatar.style.color='white';
-    const txt = document.createElement('div'); txt.innerHTML = `<b>${p.name||p.id}</b><div style="font-size:12px;color:#666">${Math.round(p.x||0)}, ${Math.round(p.y||0)}</div>`;
-    row.appendChild(avatar); row.appendChild(txt);
-    list.appendChild(row);
-  }
-}
-
-/* simple hash to color */
-function hashColor(s){
-  let h=0; for (let i=0;i<s.length;i++) h = (h<<5)-h + s.charCodeAt(i);
-  return (h>>>0).toString(16);
-}
-
-/* ========= INTERACTION: place/break placeholder ========= */
-function doInteract(){
-  // break block in front (simple: nearest block in range)
-  const range = 3;
-  let target = null;
-  for (let b of world){
-    const dx = b.x - Math.round(local.x);
-    const dy = b.y - Math.round(local.y);
-    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && Math.hypot(dx,dy) <= range){
-      target = b; break;
+    function showHome() {
+      uploadSection.classList.add('hidden');
+      profileSection.classList.add('hidden');
+      homeSection.classList.remove('hidden');
+      loadVideos();
     }
-  }
-  if (target){
-    // remove block locally and sync world to firebase
-    world = world.filter(x=> x !== target);
-    if (serverID) db.ref(`servers/${serverID}/world`).set(world);
-    // give player block
-    const id = (target.type===1)?'dirt':'grass';
-    addToInventory(id,1);
-    renderInventory(); renderHotbar();
-    return;
-  } else {
-    // place block in front of player based on selectedSlot
-    const item = inventory[selectedSlot];
-    if (!item) return;
-    const placeX = Math.round(local.x + (local.vx>0?1:-1));
-    const placeY = Math.round(local.y);
-    world.push({x:placeX,y:placeY,type:(item.id==='dirt')?1:2});
-    if (serverID) db.ref(`servers/${serverID}/world`).set(world);
-    // consume one
-    item.count--; if (item.count<=0) inventory[selectedSlot]=null;
-    renderInventory(); renderHotbar();
-  }
-}
-function addToInventory(id,count){
-  // try stack
-  for (let i=0;i<10;i++){
-    if (inventory[i] && inventory[i].id === id){ inventory[i].count += count; return; }
-  }
-  for (let i=0;i<10;i++){ if (!inventory[i]){ inventory[i] = {id,count}; return; } }
-}
 
-/* ========= SERVERS: create / join / list ========= */
-function createServer(){
-  serverID = "s" + Math.random().toString(36).slice(2,6);
-  generateFlat();
-  db.ref(`servers/${serverID}`).set({ world: world, players: {} }).then(()=>{
-    scoreEl.textContent = `Сервер: ${serverID}`;
-    listenPlayers();
-  });
-}
-function joinServer(id){
-  serverID = id;
-  db.ref(`servers/${id}/world`).once('value').then(snap=>{
-    world = snap.val() || [];
-    scoreEl.textContent = `Сервер: ${serverID}`;
-    listenPlayers();
-  });
-}
-function leaveServer(){
-  if (!serverID) return;
-  db.ref(`servers/${serverID}/players/${playerID}`).remove();
-  db.ref(`servers/${serverID}/players`).off();
-  serverID = null; scoreEl.textContent = `Сервер: —`;
-}
+    // === ЗАГРУЗКА ВИДЕО ===
+    document.getElementById('uploadVideoBtn').onclick = () => {
+      const file = document.getElementById('videoFile').files[0];
+      const title = document.getElementById('videoTitle').value;
+      const desc = document.getElementById('videoDesc').value;
+      if (!file || !title) return alert("Заполните поля");
 
-/* server list live */
-db.ref('servers').on('value', snap=>{
-  const data = snap.val() || {};
-  serversBox.innerHTML = '<b style="color:white">Сервера:</b>';
-  for (let id in data){
-    const btn = document.createElement('button');
-    btn.className='btn'; btn.style.marginTop='6px'; btn.textContent = id;
-    btn.addEventListener('click', ()=> joinServer(id));
-    serversBox.appendChild(btn);
-  }
-});
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const videoId = Date.now() + Math.random().toString(36);
+        const videoData = {
+          id: videoId,
+          title, desc,
+          url: e.target.result,
+          authorId: currentUser.uid,
+          author: currentUser.username,
+          timestamp: Date.now(),
+          likes: 0, dislikes: 0, views: 0,
+          likedBy: {}, dislikedBy: {}, comments: []
+        };
 
-/* ========= SYNC PLAYERS ========= */
-function listenPlayers(){
-  if (!serverID) return;
-  db.ref(`servers/${serverID}/players`).on('value', snap=>{
-    players = snap.val() || {};
-    // ensure local player exists in players (we update regularly anyway)
-    players[playerID] = players[playerID] || {x:local.x,y:local.y,name:playerName};
-    renderLeaders();
-  });
-  // set onDisconnect removal
-  db.ref(`servers/${serverID}/players/${playerID}`).onDisconnect().remove();
-}
+        db.ref('videos/' + videoId).set(videoData).then(() => {
+          alert("Видео загружено!");
+          document.getElementById('videoFile').value = '';
+          document.getElementById('videoTitle').value = '';
+          document.getElementById('videoDesc').value = '';
+          showHome();
+        });
+      };
+      reader.readAsDataURL(file);
+    };
 
-/* ========= INITIAL UI setup ========= */
-renderInventory(); renderHotbar();
-
-/* Quick create server to let user test immediately if none */
-if (!serverID){
-  createServer(); // autostart single server for testing
-}
-
-/* show names above players handled in draw loop based on players state */
-
-/* ========= Additional: periodic player cleanup ========= */
-setInterval(()=>{
-  // remove stale players server-side (optional, here local cleanup)
-  if (!serverID) return;
-  const now = Date.now();
-  for (let id in players){
-    if (players[id].ts && now - players[id].ts > 1000*60*5){ // 5 min stale
-      db.ref(`servers/${serverID}/players/${id}`).remove();
+    // === ОТОБРАЖЕНИЕ ВИДЕО ===
+    function loadVideos() {
+      const grid = document.getElementById('videoGrid');
+      grid.innerHTML = '<p>Загрузка...</p>';
+      db.ref('videos').on('value', snap => {
+        const videos = snap.val() || {};
+        grid.innerHTML = '';
+        Object.values(videos).sort((a,b) => b.timestamp - a.timestamp).forEach(video => {
+          const card = createVideoCard(video);
+          grid.appendChild(card);
+        });
+      });
     }
-  }
-}, 60*1000);
 
-/* ========= Utilities ========= */
-console.log('Client started', playerID);
-</script>
+    function createVideoCard(video) {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.onclick = () => openVideoModal(video);
+
+      const liked = video.likedBy?.[currentUser?.uid];
+      const disliked = video.dislikedBy?.[currentUser?.uid];
+
+      card.innerHTML = `
+        <video src="${video.url}" preload="metadata"></video>
+        <div class="video-info">
+          <div class="video-title">${video.title}</div>
+          <div class="video-channel">${video.author}</div>
+          <div class="video-actions">
+            <button class="like-btn ${liked ? 'liked' : ''}"><i class="fas fa-thumbs-up"></i> ${video.likes || 0}</button>
+            <button class="dislike-btn ${disliked ? 'disliked' : ''}"><i class="fas fa-thumbs-down"></i> ${video.dislikes || 0}</button>
+            <span><i class="fas fa-eye"></i> ${video.views || 0}</span>
+          </div>
+        </div>
+      `;
+
+      // Лайки/дизлайки
+      card.querySelector('.like-btn').onclick = (e) => {
+        e.stopPropagation();
+        toggleLike(video.id, !liked);
+      };
+      card.querySelector('.dislike-btn').onclick = (e) => {
+        e.stopPropagation();
+        toggleLike(video.id, false, !disliked);
+      };
+
+      return card;
+    }
+
+    // === МОДАЛЬНОЕ ОКНО ВИДЕО ===
+    function openVideoModal(video) {
+      currentVideoId = video.id;
+      db.ref('videos/' + video.id + '/views').transaction(v => (v || 0) + 1);
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:1000;display:flex;justify-content:center;align-items:center;padding:20px;`;
+      modal.innerHTML = `
+        <div style="background:#111;border-radius:10px;max-width:900px;width:100%;max-height:90vh;overflow:auto;">
+          <div style="padding:20px;">
+            <button style="float:right;background:none;border:none;color:#fff;font-size:20px;cursor:pointer;" onclick="this.closest('[style]').remove()">×</button>
+            <h2>${video.title}</h2>
+            <video controls src="${video.url}" style="width:100%;max-height:500px;"></video>
+            <p>${video.desc}</p>
+            <div style="margin:15px 0;display:flex;justify-content:space-between;align-items:center;">
+              <span>Автор: <strong>${video.author}</strong></span>
+              <button id="subscribeBtn" class="subscribe-btn">Подписаться</button>
+            </div>
+            <div class="comments" id="commentsList"></div>
+            <div class="comment-input">
+              <input type="text" id="commentInput" placeholder="Напишите комментарий..." />
+              <button id="sendComment">Отправить</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      loadComments(video.id);
+      checkSubscription(video.authorId, modal.querySelector('#subscribeBtn'));
+
+      modal.querySelector('#sendComment').onclick = () => {
+        const input = modal.querySelector('#commentInput');
+        if (!input.value.trim()) return;
+        const comment = {
+          text: input.value,
+          author: currentUser.username,
+          authorId: currentUser.uid,
+          timestamp: Date.now()
+        };
+        db.ref('videos/' + video.id + '/comments').push(comment).then(() => {
+          input.value = '';
+        });
+      };
+    }
+
+    function loadComments(videoId) {
+      const list = document.getElementById('commentsList');
+      if (!list) return;
+      db.ref('videos/' + videoId + '/comments').on('value', snap => {
+        const comments = snap.val() || {};
+        list.innerHTML = Object.values(comments).sort((a,b) => a.timestamp - b.timestamp).map(c => `
+          <div class="comment">
+            <strong>${c.author}</strong>: ${c.text}
+            <small style="float:right;color:#aaa;">${new Date(c.timestamp).toLocaleString()}</small>
+          </div>
+        `).join('');
+      });
+    }
+
+    // === ЛАЙКИ ===
+    function toggleLike(videoId, isLike, isDislike = false) {
+      if (!currentUser) return;
+      const path = `videos/${videoId}/${isLike ? 'likedBy' : 'dislikedBy'}/${currentUser.uid}`;
+      const opposite = isLike ? 'dislikedBy' : 'likedBy';
+      db.ref(`videos/${videoId}/${opposite}/${currentUser.uid}`).remove();
+      db.ref(path).set(true).then(() => {
+        const inc = isLike ? { likes: firebase.database.ServerValue.increment(1) } 
+                          : { dislikes: firebase.database.ServerValue.increment(1) };
+        db.ref('videos/' + videoId).update(inc);
+      });
+    }
+
+    // === ПОДПИСКИ ===
+    function checkSubscription(authorId, btn) {
+      if (!currentUser || authorId === currentUser.uid) {
+        btn.style.display = 'none';
+        return;
+      }
+      db.ref('users/' + currentUser.uid + '/subscribedTo/' + authorId).once('value').then(snap => {
+        if (snap.val()) {
+          btn.textContent = 'Отписаться';
+          btn.classList.add('subscribed');
+        } else {
+          btn.textContent = 'Подписаться';
+          btn.classList.remove('subscribed');
+        }
+        btn.onclick = () => toggleSubscribe(authorId, btn);
+      });
+    }
+
+    function toggleSubscribe(authorId, btn) {
+      const path = 'users/' + currentUser.uid + '/subscribedTo/' + authorId;
+      db.ref(path).once('value').then(snap => {
+        if (snap.val()) {
+          db.ref(path).remove();
+          db.ref('users/' + authorId + '/subscribers').transaction(v => (v || 1) - 1);
+          btn.textContent = 'Подписаться';
+          btn.classList.remove('subscribed');
+        } else {
+          db.ref(path).set(true);
+          db.ref('users/' + authorId + '/subscribers').transaction(v => (v || 0) + 1);
+          btn.textContent = 'Отписаться';
+          btn.classList.add('subscribed');
+        }
+      });
+    }
+
+    // === ПРОФИЛЬ ===
+    function loadProfile() {
+      db.ref('users/' + currentUser.uid).once('value').then(snap => {
+        const user = snap.val();
+        document.getElementById('profileInfo').innerHTML = `
+          <img src="https://via.placeholder.com/100" />
+          <h2>${user.username}</h2>
+          <p>${user.email}</p>
+          <p>Подписчиков: <strong>${user.subscribers || 0}</strong></p>
+        `;
+      });
+
+      const grid = document.getElementById('myVideos');
+      grid.innerHTML = '<p>Загрузка...</p>';
+      db.ref('videos').on('value', snap => {
+        const videos = snap.val() || {};
+        grid.innerHTML = '';
+        Object.values(videos).filter(v => v.authorId === currentUser.uid).forEach(video => {
+          grid.appendChild(createVideoCard(video));
+        });
+      });
+    }
+
+    // Авто-вход
+    auth.onAuthStateChanged(user => {
+      if (user && !currentUser) {
+        loadUser(user);
+      }
+    });
+  </script>
 </body>
 </html>
