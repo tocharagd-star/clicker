@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Online Clicker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
   body {
     display: flex;
@@ -13,6 +14,7 @@
     background-color: #2c2c2c;
     color: white;
     font-family: Arial, sans-serif;
+    touch-action: manipulation; /* Убираем двойное нажатие/зум */
   }
   #counter {
     font-size: 48px;
@@ -28,6 +30,7 @@
     color: white;
     cursor: pointer;
     box-shadow: 2px 2px 10px #000;
+    user-select: none;
   }
   #clickButton:hover {
     background-color: #666;
@@ -45,6 +48,7 @@ const counterEl = document.getElementById("counter");
 const button = document.getElementById("clickButton");
 
 let localCounter = 0;
+let clickQueue = [];
 
 // Получаем значение счётчика с сервера
 async function fetchCounter() {
@@ -58,28 +62,35 @@ async function fetchCounter() {
   }
 }
 
-// Отправляем значение счётчика на сервер
-async function pushCounter(value) {
+// Отправляем очередной клик на сервер
+async function pushClickQueue() {
+  if (clickQueue.length === 0) return;
+  const valueToPush = localCounter;
+  clickQueue = []; // очищаем очередь, т.к. значение уже локально
   try {
     await fetch(firebaseURL, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value })
+      body: JSON.stringify({ value: valueToPush })
     });
   } catch(e) {
     console.log("Error pushing counter:", e);
   }
 }
 
-// Обновление каждые 1 секунду с сервера для синхронизации
-setInterval(fetchCounter, 1000);
-
-// Клик — увеличиваем локально и сразу отображаем
-button.addEventListener("click", () => {
+// Клик — добавляем в очередь и обновляем локально
+function registerClick() {
   localCounter += 1;
   counterEl.textContent = "Clicks: " + localCounter;
-  pushCounter(localCounter); // Отправляем на сервер, но не ждём ответа
-});
+  clickQueue.push(1);
+  pushClickQueue();
+}
+
+// Используем pointerdown для мгновенного срабатывания на мобильных
+button.addEventListener("pointerdown", registerClick);
+
+// Синхронизация с сервером каждые 0.5 сек
+setInterval(fetchCounter, 500);
 
 // Первичное получение
 fetchCounter();
