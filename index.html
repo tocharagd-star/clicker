@@ -4,140 +4,178 @@
 <meta charset="UTF-8">
 <title>Geometry Dash Clone</title>
 <style>
-  body { margin: 0; background: #222; overflow: hidden; font-family: sans-serif; color: #fff; }
-  canvas { display: block; background: #333; margin: 0 auto; }
-  #gui { position: absolute; top: 10px; left: 10px; }
-  button { margin: 5px; padding: 5px 10px; background: #555; border: none; color: white; cursor: pointer; }
-  input { padding: 5px; margin: 5px; }
+  body { margin: 0; font-family: Arial, sans-serif; background: #2e2e2e; color: #fff; }
+  #menu, #editor, #play { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
+  #menu { display: block; background: #222; text-align: center; padding-top: 50px; }
+  button { padding: 10px 20px; margin: 10px; background: #555; border: none; color: #fff; cursor: pointer; font-size: 16px; }
+  input { padding: 5px; margin: 5px; font-size: 14px; }
+  canvas { display: block; margin: 0 auto; background: #333; border: 2px solid #444; }
+  #levelsList { max-height: 200px; overflow-y: auto; margin: 10px auto; width: 300px; border: 1px solid #555; padding: 5px; }
+  .levelItem { padding: 5px; margin: 2px 0; background: #444; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<div id="gui">
-  <button id="playBtn">Играть</button>
-  <button id="editorBtn">Редактор</button>
-  <input type="text" id="levelName" placeholder="Имя уровня">
-  <button id="saveBtn">Сохранить уровень</button>
-  <button id="loadBtn">Загрузить уровень</button>
+<div id="menu">
+  <h1>Geometry Dash Clone</h1>
+  <button id="playMenuBtn">Играть</button>
+  <button id="editorMenuBtn">Редактор</button>
+  <h3>Уровни</h3>
+  <div id="levelsList"></div>
 </div>
 
-<canvas id="gameCanvas" width="800" height="400"></canvas>
+<div id="editor">
+  <button id="backFromEditor">Назад</button>
+  <input type="text" id="levelName" placeholder="Имя уровня">
+  <button id="saveLevel">Сохранить</button>
+  <canvas id="editorCanvas" width="800" height="400"></canvas>
+</div>
+
+<div id="play">
+  <button id="backFromPlay">Назад</button>
+  <div>Очки: <span id="scoreDisplay">0</span></div>
+  <canvas id="playCanvas" width="800" height="400"></canvas>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
-  // Firebase setup
-  const firebaseConfig = {
-    databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/"
-  };
+  const firebaseConfig = { databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/" };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
+  // HTML elements
+  const menu = document.getElementById('menu');
+  const editorDiv = document.getElementById('editor');
+  const playDiv = document.getElementById('play');
+  const levelsList = document.getElementById('levelsList');
+  const scoreDisplay = document.getElementById('scoreDisplay');
 
-  let gameMode = 'menu'; // 'menu', 'play', 'edit'
-  let player = { x: 50, y: 300, w: 30, h: 30, vy: 0, onGround: false };
-  let gravity = 0.7;
-  let jumpPower = -12;
-  let obstacles = [];
+  const editorCanvas = document.getElementById('editorCanvas');
+  const editorCtx = editorCanvas.getContext('2d');
+  const playCanvas = document.getElementById('playCanvas');
+  const playCtx = playCanvas.getContext('2d');
+
   let levelData = [];
+  let player = { x: 50, y: 300, w: 30, h: 30, vy: 0, onGround: false };
+  let obstacles = [];
   let scroll = 0;
   let speed = 4;
+  let gravity = 0.7;
+  let jumpPower = -12;
+  let score = 0;
 
-  function spawnObstacle(x, y, w, h) {
-    obstacles.push({ x, y, w, h });
-  }
+  // Menu buttons
+  document.getElementById('playMenuBtn').onclick = () => { showPlay(); };
+  document.getElementById('editorMenuBtn').onclick = () => { showEditor(); };
 
-  function resetGame() {
-    player.y = 300;
-    player.vy = 0;
-    scroll = 0;
-    obstacles = [];
-    for(let block of levelData){
-      spawnObstacle(block.x, block.y, block.w, block.h);
-    }
-  }
-
-  function update() {
-    if(gameMode === 'play') {
-      player.vy += gravity;
-      player.y += player.vy;
-      if(player.y + player.h > canvas.height){
-        player.y = canvas.height - player.h;
-        player.vy = 0;
-        player.onGround = true;
-      } else {
-        player.onGround = false;
-      }
-
-      scroll += speed;
-      for(let obs of obstacles){
-        obs.x -= speed;
-        if(player.x < obs.x + obs.w && player.x + player.w > obs.x &&
-           player.y < obs.y + obs.h && player.y + player.h > obs.y){
-          resetGame();
-        }
-      }
-    }
-    draw();
-    requestAnimationFrame(update);
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Player
-    ctx.fillStyle = 'yellow';
-    ctx.fillRect(player.x, player.y, player.w, player.h);
-    // Obstacles
-    ctx.fillStyle = 'red';
-    for(let obs of obstacles){
-      ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
-    }
-    // Editor
-    if(gameMode === 'edit'){
-      ctx.fillStyle = 'cyan';
-      for(let block of levelData){
-        ctx.fillRect(block.x, block.y, block.w, block.h);
-      }
-    }
-  }
-
-  document.addEventListener('keydown', e => {
-    if(e.code === 'Space'){
-      if(player.onGround){
-        player.vy = jumpPower;
-      }
-      if(gameMode === 'edit'){
-        // add block where player is
-        levelData.push({x: player.x + scroll, y: player.y, w: 40, h: 40});
-      }
-    }
-  });
-
-  // Buttons
-  document.getElementById('playBtn').onclick = () => {
-    gameMode = 'play';
-    resetGame();
-  };
-  document.getElementById('editorBtn').onclick = () => {
-    gameMode = 'edit';
-    obstacles = [];
-  };
-  document.getElementById('saveBtn').onclick = () => {
+  // Editor buttons
+  document.getElementById('backFromEditor').onclick = () => { showMenu(); };
+  document.getElementById('saveLevel').onclick = () => {
     const name = document.getElementById('levelName').value || 'default';
     db.ref('levels/' + name).set(levelData);
     alert('Уровень сохранён!');
-  };
-  document.getElementById('loadBtn').onclick = () => {
-    const name = document.getElementById('levelName').value || 'default';
-    db.ref('levels/' + name).once('value').then(snapshot => {
-      levelData = snapshot.val() || [];
-      alert('Уровень загружен!');
-    });
+    loadLevels();
   };
 
-  update();
+  // Play buttons
+  document.getElementById('backFromPlay').onclick = () => { showMenu(); };
+
+  function showMenu() { menu.style.display='block'; editorDiv.style.display='none'; playDiv.style.display='none'; }
+  function showEditor() { menu.style.display='none'; editorDiv.style.display='block'; playDiv.style.display='none'; }
+  function showPlay() { menu.style.display='none'; editorDiv.style.display='none'; playDiv.style.display='block'; startGame(); }
+
+  // Load levels from Firebase
+  function loadLevels() {
+    levelsList.innerHTML = '';
+    db.ref('levels').once('value').then(snapshot => {
+      const levels = snapshot.val();
+      for(let name in levels){
+        const div = document.createElement('div');
+        div.className = 'levelItem';
+        div.innerText = name;
+        div.onclick = () => { loadLevel(name); };
+        levelsList.appendChild(div);
+      }
+    });
+  }
+
+  function loadLevel(name){
+    db.ref('levels/' + name).once('value').then(snapshot => {
+      levelData = snapshot.val() || [];
+      alert('Уровень загружен в редактор!');
+      showEditor();
+      drawEditor();
+    });
+  }
+
+  // Editor drawing
+  function drawEditor() {
+    editorCtx.clearRect(0,0,editorCanvas.width, editorCanvas.height);
+    editorCtx.fillStyle = 'cyan';
+    for(let b of levelData){
+      editorCtx.fillRect(b.x - scroll, b.y, b.w, b.h);
+    }
+  }
+
+  editorCanvas.addEventListener('click', e => {
+    const rect = editorCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left + scroll;
+    const y = e.clientY - rect.top;
+    levelData.push({x:x, y:y, w:40, h:40}); // block
+    drawEditor();
+  });
+
+  // Game functions
+  function resetGame(){
+    player.y = 300; player.vy=0; player.onGround=false;
+    scroll = 0; score=0;
+    obstacles = levelData.map(b => ({...b}));
+  }
+
+  function startGame(){
+    resetGame();
+    requestAnimationFrame(gameLoop);
+  }
+
+  document.addEventListener('keydown', e => {
+    if(e.code === 'Space' && player.onGround){
+      player.vy = jumpPower;
+    }
+  });
+
+  function gameLoop(){
+    // Physics
+    player.vy += gravity;
+    player.y += player.vy;
+    if(player.y + player.h > playCanvas.height){
+      player.y = playCanvas.height - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    } else player.onGround = false;
+
+    // Scroll & collision
+    scroll += speed;
+    score = Math.floor(scroll/10);
+    for(let obs of obstacles){
+      if(player.x < obs.x - scroll + obs.w && player.x + player.w > obs.x - scroll &&
+         player.y < obs.y + obs.h && player.y + player.h > obs.y){
+        resetGame();
+      }
+    }
+
+    // Draw
+    playCtx.clearRect(0,0,playCanvas.width,playCanvas.height);
+    playCtx.fillStyle='yellow'; playCtx.fillRect(player.x, player.y, player.w, player.h);
+    playCtx.fillStyle='red';
+    for(let obs of obstacles){
+      playCtx.fillRect(obs.x - scroll, obs.y, obs.w, obs.h);
+    }
+    scoreDisplay.innerText = score;
+    requestAnimationFrame(gameLoop);
+  }
+
+  loadLevels();
 </script>
 
 </body>
