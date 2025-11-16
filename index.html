@@ -113,18 +113,28 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script type="module">
-    // === КОНФИГУРАЦИЯ FIREBASE ===
+    // === ВСТАВЬ СВОЙ FIREBASE CONFIG ЗДЕСЬ ===
     const firebaseConfig = {
-      databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/"
+      // Пример — ЗАМЕНИ на свой из Firebase Console!
+      apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",  // ← ТВОЙ API KEY!
+      authDomain: "aitube-8e681.firebaseapp.com",
+      databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/",
+      projectId: "aitube-8e681",
+      storageBucket: "aitube-8e681.appspot.com",
+      messagingSenderId: "123456789",  // ← ТВОЙ!
+      appId: "1:123456789:web:abcdef123456"  // ← ТВОЙ!
     };
 
+    let app, db, auth;
     try {
-      firebase.initializeApp(firebaseConfig);
+      app = firebase.initializeApp(firebaseConfig);
+      db = firebase.database(app);
+      auth = firebase.auth(app);
+      console.log("Firebase инициализирован успешно!");
     } catch (error) {
-      alert("Ошибка инициализации Firebase: " + error.message);
+      alert("Ошибка инициализации Firebase: " + error.message + "\nПроверь config и правила!");
+      throw error;
     }
-    const db = firebase.database();
-    const auth = firebase.auth();
 
     let currentUser = null;
 
@@ -177,16 +187,17 @@
       if (isLogin) {
         auth.signInWithEmailAndPassword(email, password)
           .then(cred => loadUser(cred.user))
-          .catch(err => showError(authError, "Ошибка входа: " + err.message));
+          .catch(err => showError(authError, "Ошибка входа (" + err.code + "): " + err.message));
       } else {
         if (!username) return showError(authError, "Введите имя пользователя");
+        if (password.length < 6) return showError(authError, "Пароль слишком короткий (минимум 6 символов)");
         auth.createUserWithEmailAndPassword(email, password)
           .then(cred => {
             return db.ref('users/' + cred.user.uid).set({
               username, email, subscribers: 0, subscribedTo: {}
             }).then(() => loadUser(cred.user));
           })
-          .catch(err => showError(authError, "Ошибка регистрации: " + err.message));
+          .catch(err => showError(authError, "Ошибка регистрации (" + err.code + "): " + err.message));
       }
     };
 
@@ -196,8 +207,8 @@
         currentUser = null;
         mainApp.classList.add('hidden');
         authSection.classList.remove('hidden');
-        showHome(); // Сброс
-      }).catch(err => alert("Ошибка выхода: " + err.message));
+        showHome();
+      }).catch(err => alert("Ошибка выхода (" + err.code + "): " + err.message));
     };
 
     // === ЗАГРУЗКА ПОЛЬЗОВАТЕЛЯ ===
@@ -210,7 +221,9 @@
         mainApp.classList.remove('hidden');
         showHome();
         loadVideos();
-      }).catch(err => alert("Ошибка загрузки профиля: " + err.message));
+      }).catch(err => {
+        alert("Ошибка загрузки профиля (" + err.code + "): " + err.message);
+      });
     }
 
     // === НАВИГАЦИЯ ===
@@ -275,7 +288,7 @@
             progress.classList.add('hidden');
             showHome();
           })
-          .catch(err => showError(uploadError, "Ошибка загрузки: " + err.message));
+          .catch(err => showError(uploadError, "Ошибка загрузки (" + err.code + "): " + err.message));
       };
       reader.onerror = () => showError(uploadError, "Ошибка чтения файла");
       reader.readAsDataURL(file);
@@ -285,7 +298,7 @@
     function loadVideos() {
       const grid = document.getElementById('videoGrid');
       grid.innerHTML = '<p>Загрузка видео...</p>';
-      db.ref('videos').once('value').then(snap => { // once вместо on для избежания утечек
+      db.ref('videos').once('value').then(snap => {
         const videos = snap.val() || {};
         grid.innerHTML = '';
         if (Object.keys(videos).length === 0) {
@@ -297,7 +310,7 @@
           grid.appendChild(card);
         });
       }).catch(err => {
-        grid.innerHTML = '<p>Ошибка загрузки: ' + err.message + '</p>';
+        grid.innerHTML = '<p>Ошибка загрузки видео (' + err.code + '): ' + err.message + '</p>';
       });
     }
 
@@ -385,7 +398,7 @@
           };
           db.ref(`videos/${video.id}/comments/${commentId}`).set(comment)
             .then(() => input.value = '')
-            .catch(err => alert("Ошибка комментария: " + err.message));
+            .catch(err => alert("Ошибка комментария (" + err.code + "): " + err.message));
         };
       }
     }
@@ -401,7 +414,7 @@
             <small style="float:right;color:#aaa;">${new Date(c.timestamp).toLocaleString('ru-RU')}</small>
           </div>
         `).join('') || '<p>Нет комментариев</p>';
-      }).catch(err => list.innerHTML = '<p>Ошибка загрузки комментариев</p>');
+      }).catch(err => list.innerHTML = '<p>Ошибка загрузки комментариев (' + err.code + ')</p>');
     }
 
     // === ЛАЙКИ ===
