@@ -20,6 +20,7 @@
     .auth-container input { width: 100%; padding: 14px; margin: 12px 0; border: none; border-radius: 8px; font-size: 16px; }
     .auth-container button { width: 100%; padding: 14px; background: #f00; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; margin-top: 10px; }
     .auth-container button:hover { background: #c00; }
+    .error { color: #f55; margin-top: 10px; padding: 10px; background: #300; border-radius: 5px; }
 
     .hidden { display: none; }
 
@@ -66,6 +67,7 @@
       <p style="margin-bottom: 20px; color: #aaa;">Введи своё имя и начни!</p>
       <input type="text" id="usernameInput" placeholder="Твоё имя" maxlength="20" />
       <button id="startBtn">Начать смотреть</button>
+      <div id="errorMsg" class="error hidden"></div>
     </div>
   </div>
 
@@ -89,6 +91,7 @@
         <input type="file" id="videoFile" accept="video/*" />
         <button id="uploadVideoBtn">Загрузить</button>
         <progress id="uploadProgress" value="0" max="100" class="hidden"></progress>
+        <div id="uploadError" class="error hidden"></div>
       </div>
 
       <!-- Главная -->
@@ -115,15 +118,33 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <script type="module">
-    // === КОНФИГ FIREBASE (вставь свой, если нужно) ===
+    console.log("=== AiTube: Запуск ===");
+    
+    // === КОНФИГ FIREBASE ===
     const firebaseConfig = {
       databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/"
     };
 
-    // Инициализация
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const auth = firebase.auth();
+    let app, db, auth;
+    try {
+      app = firebase.initializeApp(firebaseConfig);
+      db = firebase.database(app);
+      auth = firebase.auth(app);
+      console.log("Firebase: Инициализация OK");
+      
+      // Тест базы
+      db.ref('.info/connected').on('value', (snap) => {
+        if (snap.val() === true) {
+          console.log("Firebase: Соединение с базой OK");
+        } else {
+          console.error("Firebase: Нет соединения с базой!");
+        }
+      });
+    } catch (error) {
+      console.error("Firebase: Ошибка init", error);
+      alert("Ошибка Firebase: " + error.message + ". Проверь config!");
+      throw error;
+    }
 
     let currentUser = null;
 
@@ -132,23 +153,35 @@
     const mainApp = document.getElementById('mainApp');
     const usernameInput = document.getElementById('usernameInput');
     const startBtn = document.getElementById('startBtn');
+    const errorMsg = document.getElementById('errorMsg');
     const uploadNavBtn = document.getElementById('uploadNavBtn');
     const profileNavBtn = document.getElementById('profileNavBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const homeSection = document.getElementById('homeSection');
     const uploadSection = document.getElementById('uploadSection');
     const profileSection = document.getElementById('profileSection');
+    const uploadError = document.getElementById('uploadError');
+
+    // Показ ошибки
+    function showError(el, msg) {
+      console.error("Ошибка:", msg);
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 5000);
+    }
 
     // === ПРОСТАЯ АВТОРИЗАЦИЯ ===
     startBtn.onclick = () => {
       const name = usernameInput.value.trim();
       if (!name || name.length < 2) {
-        alert("Введи имя (минимум 2 символа)");
+        showError(errorMsg, "Имя слишком короткое (минимум 2 символа)");
         return;
       }
 
+      console.log("Авторизация анонимно для:", name);
       auth.signInAnonymously()
         .then(cred => {
+          console.log("Auth OK, UID:", cred.user.uid);
           currentUser = cred.user;
           return db.ref('users/' + currentUser.uid).set({
             username: name,
@@ -157,22 +190,29 @@
           });
         })
         .then(() => {
+          console.log("Пользователь сохранён в БД");
           currentUser.username = name;
           authSection.classList.add('hidden');
           mainApp.classList.remove('hidden');
           showHome();
           loadVideos();
         })
-        .catch(err => alert("Ошибка: " + err.message));
+        .catch(err => {
+          console.error("Auth/DB ошибка:", err.code, err.message);
+          showError(errorMsg, "Ошибка входа (" + err.code + "): " + err.message + ". Проверь Anonymous в Firebase Auth!");
+        });
     };
 
     // Смена имени
     logoutBtn.onclick = () => {
-      if (confirm("Сменить имя? Все данные сохранятся.")) {
+      if (confirm("Сменить имя? Данные сохранятся.")) {
+        console.log("Выход");
         auth.signOut().then(() => {
+          currentUser = null;
           mainApp.classList.add('hidden');
           authSection.classList.remove('hidden');
           usernameInput.value = '';
+          errorMsg.classList.add('hidden');
         });
       }
     };
@@ -202,9 +242,9 @@
     document.getElementById('uploadVideoBtn').onclick = () => {
       const file = document.getElementById('videoFile').files[0];
       const title = document.getElementById('videoTitle').value.trim();
-      if (!file || !title) return alert("Выбери видео и введи название");
+      if (!file || !title) return showError(uploadError, "Выбери видео и введи название");
 
-      if (file.size > 10 * 1024 * 1024) return alert("Видео >10MB. Используй маленькое для теста.");
+      if (file.size > 10 * 1024 * 1024) return showError(uploadError, "Видео >10MB. Используй маленькое!");
 
       const progress = document.getElementById('uploadProgress');
       progress.classList.remove('hidden');
@@ -223,8 +263,10 @@
           likedBy: {}, dislikedBy: {}, comments: {}
         };
 
+        console.log("Загрузка видео в БД:", videoId);
         db.ref('videos/' + videoId).set(videoData)
           .then(() => {
+            console.log("Видео сохранено");
             alert("Видео загружено!");
             document.getElementById('videoFile').value = '';
             document.getElementById('videoTitle').value = '';
@@ -232,11 +274,15 @@
             progress.classList.add('hidden');
             showHome();
           })
-          .catch(err => alert("Ошибка: " + err.message));
+          .catch(err => {
+            console.error("Upload ошибка:", err);
+            showError(uploadError, "Ошибка загрузки (" + err.code + "): " + err.message);
+          });
       };
       reader.onprogress = (e) => {
         if (e.lengthComputable) progress.value = (e.loaded / e.total) * 100;
       };
+      reader.onerror = () => showError(uploadError, "Ошибка чтения файла");
       reader.readAsDataURL(file);
     };
 
@@ -244,8 +290,10 @@
     function loadVideos() {
       const grid = document.getElementById('videoGrid');
       grid.innerHTML = '<p style="text-align:center; color:#aaa;">Загрузка...</p>';
+      console.log("Загрузка видео из БД");
       db.ref('videos').once('value').then(snap => {
         const videos = snap.val() || {};
+        console.log("Видео загружено:", Object.keys(videos).length);
         grid.innerHTML = '';
         if (Object.keys(videos).length === 0) {
           grid.innerHTML = '<p style="text-align:center; color:#aaa;">Нет видео. Будь первым!</p>';
@@ -254,6 +302,9 @@
         Object.values(videos).sort((a,b) => b.timestamp - a.timestamp).forEach(video => {
           grid.appendChild(createVideoCard(video));
         });
+      }).catch(err => {
+        console.error("Load видео ошибка:", err);
+        grid.innerHTML = '<p style="text-align:center; color:#f55;">Ошибка загрузки: ' + err.message + '</p>';
       });
     }
 
@@ -318,7 +369,7 @@
         const cid = Date.now().toString();
         db.ref(`videos/${video.id}/comments/${cid}`).set({
           text, author: currentUser.username, authorId: currentUser.uid, timestamp: Date.now()
-        }).then(() => input.value = '');
+        }).then(() => input.value = '').catch(err => alert("Ошибка коммента: " + err.message));
       };
     }
 
@@ -376,7 +427,7 @@
         const u = snap.val();
         document.getElementById('profileName').textContent = u.username;
         document.getElementById('subCount').textContent = u.subscribers || 0;
-      });
+      }).catch(err => console.error("Profile ошибка:", err));
 
       const grid = document.getElementById('myVideos');
       grid.innerHTML = '<p style="text-align:center; color:#aaa;">Загрузка...</p>';
@@ -392,9 +443,10 @@
       });
     }
 
-    // Авто-вход (если был)
+    // Авто-вход
     auth.onAuthStateChanged(user => {
       if (user && !currentUser) {
+        console.log("Авто-вход, UID:", user.uid);
         currentUser = user;
         db.ref('users/' + user.uid).once('value').then(snap => {
           const data = snap.val();
@@ -404,10 +456,15 @@
             mainApp.classList.remove('hidden');
             showHome();
             loadVideos();
+          } else {
+            console.log("Нет данных пользователя — выход");
+            auth.signOut();
           }
         });
       }
     });
+
+    console.log("=== AiTube: Готово ===");
   </script>
 </body>
 </html>
