@@ -2,181 +2,213 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Geometry Dash Clone</title>
+<title>Geometry Dash Full</title>
 <style>
-  body { margin: 0; font-family: Arial, sans-serif; background: #2e2e2e; color: #fff; }
-  #menu, #editor, #play { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; }
-  #menu { display: block; background: #222; text-align: center; padding-top: 50px; }
-  button { padding: 10px 20px; margin: 10px; background: #555; border: none; color: #fff; cursor: pointer; font-size: 16px; }
-  input { padding: 5px; margin: 5px; font-size: 14px; }
-  canvas { display: block; margin: 0 auto; background: #333; border: 2px solid #444; }
-  #levelsList { max-height: 200px; overflow-y: auto; margin: 10px auto; width: 300px; border: 1px solid #555; padding: 5px; }
-  .levelItem { padding: 5px; margin: 2px 0; background: #444; cursor: pointer; }
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; font-family:sans-serif; background:#2e2e2e; }
+  #gui { position:absolute; top:0; left:0; width:100%; background:#222; padding:5px; display:flex; flex-wrap:wrap; align-items:center; z-index:10; }
+  #gui button, #gui select { margin:2px; padding:5px; font-size:14px; cursor:pointer; }
+  canvas { display:block; background:#333; margin:0 auto; }
+  #scoreDisplay { color:#fff; margin-left:10px; }
 </style>
 </head>
 <body>
 
-<div id="menu">
-  <h1>Geometry Dash Clone</h1>
-  <button id="playMenuBtn">Играть</button>
-  <button id="editorMenuBtn">Редактор</button>
-  <h3>Уровни</h3>
-  <div id="levelsList"></div>
-</div>
-
-<div id="editor">
-  <button id="backFromEditor">Назад</button>
-  <input type="text" id="levelName" placeholder="Имя уровня">
+<div id="gui">
+  <button id="playBtn">Играть</button>
+  <button id="editorBtn">Редактор</button>
+  <select id="toolSelect">
+    <option value="place">Поставить</option>
+    <option value="move">Переместить</option>
+    <option value="delete">Удалить</option>
+  </select>
+  <select id="blockSelect">
+    <option value="block">Блок</option>
+    <option value="spike">Шип</option>
+  </select>
   <button id="saveLevel">Сохранить</button>
-  <canvas id="editorCanvas" width="800" height="400"></canvas>
+  <button id="loadLevel">Загрузить</button>
+  <input type="text" id="levelName" placeholder="Имя уровня">
+  <span id="scoreDisplay">0</span>
 </div>
 
-<div id="play">
-  <button id="backFromPlay">Назад</button>
-  <div>Очки: <span id="scoreDisplay">0</span></div>
-  <canvas id="playCanvas" width="800" height="400"></canvas>
-</div>
+<canvas id="gameCanvas"></canvas>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
-  const firebaseConfig = { databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/" };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+const firebaseConfig = { databaseURL:"https://aitube-8e681-default-rtdb.firebaseio.com/" };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  // HTML elements
-  const menu = document.getElementById('menu');
-  const editorDiv = document.getElementById('editor');
-  const playDiv = document.getElementById('play');
-  const levelsList = document.getElementById('levelsList');
-  const scoreDisplay = document.getElementById('scoreDisplay');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-  const editorCanvas = document.getElementById('editorCanvas');
-  const editorCtx = editorCanvas.getContext('2d');
-  const playCanvas = document.getElementById('playCanvas');
-  const playCtx = playCanvas.getContext('2d');
+let cw = window.innerWidth;
+let ch = window.innerHeight;
+canvas.width = cw;
+canvas.height = ch;
 
-  let levelData = [];
-  let player = { x: 50, y: 300, w: 30, h: 30, vy: 0, onGround: false };
-  let obstacles = [];
-  let scroll = 0;
-  let speed = 4;
-  let gravity = 0.7;
-  let jumpPower = -12;
-  let score = 0;
+// Tools
+let mode = 'menu'; // menu, play, edit
+let tool = 'place';
+let blockType = 'block';
 
-  // Menu buttons
-  document.getElementById('playMenuBtn').onclick = () => { showPlay(); };
-  document.getElementById('editorMenuBtn').onclick = () => { showEditor(); };
+// Grid
+const gridSize = 40;
 
-  // Editor buttons
-  document.getElementById('backFromEditor').onclick = () => { showMenu(); };
-  document.getElementById('saveLevel').onclick = () => {
-    const name = document.getElementById('levelName').value || 'default';
-    db.ref('levels/' + name).set(levelData);
-    alert('Уровень сохранён!');
-    loadLevels();
-  };
+// Player
+let player = { x:50, y:ch-70, w:30, h:30, vy:0, onGround:false };
+let gravity = 0.7;
+let jumpPower = -12;
+let speed = 4;
 
-  // Play buttons
-  document.getElementById('backFromPlay').onclick = () => { showMenu(); };
+// Level
+let levelData = [];
+let scroll = 0;
+let score = 0;
 
-  function showMenu() { menu.style.display='block'; editorDiv.style.display='none'; playDiv.style.display='none'; }
-  function showEditor() { menu.style.display='none'; editorDiv.style.display='block'; playDiv.style.display='none'; }
-  function showPlay() { menu.style.display='none'; editorDiv.style.display='none'; playDiv.style.display='block'; startGame(); }
+// UI Elements
+const playBtn = document.getElementById('playBtn');
+const editorBtn = document.getElementById('editorBtn');
+const toolSelect = document.getElementById('toolSelect');
+const blockSelect = document.getElementById('blockSelect');
+const saveBtn = document.getElementById('saveLevel');
+const loadBtn = document.getElementById('loadLevel');
+const levelNameInput = document.getElementById('levelName');
+const scoreDisplay = document.getElementById('scoreDisplay');
 
-  // Load levels from Firebase
-  function loadLevels() {
-    levelsList.innerHTML = '';
-    db.ref('levels').once('value').then(snapshot => {
-      const levels = snapshot.val();
-      for(let name in levels){
-        const div = document.createElement('div');
-        div.className = 'levelItem';
-        div.innerText = name;
-        div.onclick = () => { loadLevel(name); };
-        levelsList.appendChild(div);
-      }
-    });
-  }
+playBtn.onclick = () => { startPlay(); };
+editorBtn.onclick = () => { startEditor(); };
+toolSelect.onchange = () => { tool = toolSelect.value; };
+blockSelect.onchange = () => { blockType = blockSelect.value; };
 
-  function loadLevel(name){
-    db.ref('levels/' + name).once('value').then(snapshot => {
-      levelData = snapshot.val() || [];
-      alert('Уровень загружен в редактор!');
-      showEditor();
-      drawEditor();
-    });
-  }
+// Save/Load
+saveBtn.onclick = () => {
+  const name = levelNameInput.value || 'default';
+  db.ref('levels/'+name).set(levelData);
+  alert('Уровень сохранён!');
+};
+loadBtn.onclick = () => {
+  const name = levelNameInput.value || 'default';
+  db.ref('levels/'+name).once('value').then(snapshot => {
+    levelData = snapshot.val() || [];
+    alert('Уровень загружен!');
+  });
+};
 
-  // Editor drawing
-  function drawEditor() {
-    editorCtx.clearRect(0,0,editorCanvas.width, editorCanvas.height);
-    editorCtx.fillStyle = 'cyan';
-    for(let b of levelData){
-      editorCtx.fillRect(b.x - scroll, b.y, b.w, b.h);
+// Editor
+function startEditor(){
+  mode='edit';
+  scroll=0;
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX + scroll)/gridSize)*gridSize;
+  const y = Math.floor((e.clientY)/gridSize)*gridSize;
+  if(mode==='edit'){
+    if(tool==='place'){
+      levelData.push({x,y,type:blockType});
+    } else if(tool==='delete'){
+      levelData = levelData.filter(b=>!(b.x===x && b.y===y));
+    } else if(tool==='move'){
+      // select first block and drag
+      selectedBlock = levelData.find(b=>b.x===x && b.y===y);
     }
   }
+});
 
-  editorCanvas.addEventListener('click', e => {
-    const rect = editorCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + scroll;
-    const y = e.clientY - rect.top;
-    levelData.push({x:x, y:y, w:40, h:40}); // block
-    drawEditor();
-  });
-
-  // Game functions
-  function resetGame(){
-    player.y = 300; player.vy=0; player.onGround=false;
-    scroll = 0; score=0;
-    obstacles = levelData.map(b => ({...b}));
+let selectedBlock=null;
+canvas.addEventListener('pointermove', e=>{
+  if(mode==='edit' && tool==='move' && selectedBlock){
+    const x = Math.floor((e.clientX + scroll)/gridSize)*gridSize;
+    const y = Math.floor((e.clientY)/gridSize)*gridSize;
+    selectedBlock.x=x; selectedBlock.y=y;
   }
+});
+canvas.addEventListener('pointerup', e=>{
+  selectedBlock=null;
+});
 
-  function startGame(){
-    resetGame();
-    requestAnimationFrame(gameLoop);
-  }
+// Game
+function startPlay(){
+  mode='play';
+  scroll=0; score=0;
+  player.x=50; player.y=ch-70; player.vy=0; player.onGround=false;
+  requestAnimationFrame(update);
+}
 
-  document.addEventListener('keydown', e => {
-    if(e.code === 'Space' && player.onGround){
-      player.vy = jumpPower;
-    }
-  });
+// Controls
+let jumpPressed=false;
+document.addEventListener('keydown', e=>{
+  if(e.code==='Space') jumpPressed=true;
+});
+document.addEventListener('keyup', e=>{
+  if(e.code==='Space') jumpPressed=false;
+});
+canvas.addEventListener('touchstart', e=>{ jumpPressed=true; });
+canvas.addEventListener('touchend', e=>{ jumpPressed=false; });
 
-  function gameLoop(){
+function update(){
+  ctx.clearRect(0,0,cw,ch);
+
+  if(mode==='play'){
     // Physics
-    player.vy += gravity;
-    player.y += player.vy;
-    if(player.y + player.h > playCanvas.height){
-      player.y = playCanvas.height - player.h;
-      player.vy = 0;
-      player.onGround = true;
-    } else player.onGround = false;
+    if(jumpPressed && player.onGround) player.vy=jumpPower;
+    player.vy+=gravity;
+    player.y+=player.vy;
+    if(player.y+player.h>ch){ player.y=ch-player.h; player.vy=0; player.onGround=true; }
+    else player.onGround=false;
 
-    // Scroll & collision
-    scroll += speed;
-    score = Math.floor(scroll/10);
-    for(let obs of obstacles){
-      if(player.x < obs.x - scroll + obs.w && player.x + player.w > obs.x - scroll &&
-         player.y < obs.y + obs.h && player.y + player.h > obs.y){
-        resetGame();
+    // Scroll
+    scroll+=speed;
+    score=Math.floor(scroll/10);
+    scoreDisplay.innerText=score;
+
+    // Draw obstacles
+    for(let b of levelData){
+      const bx=b.x-scroll;
+      const by=b.y;
+      if(b.type==='block'){ ctx.fillStyle='cyan'; ctx.fillRect(bx,by,gridSize,gridSize); }
+      if(b.type==='spike'){ ctx.fillStyle='red'; ctx.beginPath(); ctx.moveTo(bx,by+gridSize); ctx.lineTo(bx+gridSize/2,by); ctx.lineTo(bx+gridSize,by+gridSize); ctx.fill(); }
+      // Collision
+      if(player.x<bx+gridSize && player.x+player.w>bx && player.y<by+gridSize && player.y+player.h>by){
+        startPlay();
       }
     }
 
-    // Draw
-    playCtx.clearRect(0,0,playCanvas.width,playCanvas.height);
-    playCtx.fillStyle='yellow'; playCtx.fillRect(player.x, player.y, player.w, player.h);
-    playCtx.fillStyle='red';
-    for(let obs of obstacles){
-      playCtx.fillRect(obs.x - scroll, obs.y, obs.w, obs.h);
-    }
-    scoreDisplay.innerText = score;
-    requestAnimationFrame(gameLoop);
+    // Draw player
+    ctx.fillStyle='yellow';
+    ctx.fillRect(player.x,player.y,player.w,player.h);
   }
 
-  loadLevels();
-</script>
+  if(mode==='edit'){
+    // Draw grid
+    ctx.strokeStyle='#555';
+    for(let gx=0;gx<cw;gx+=gridSize){
+      ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,ch); ctx.stroke();
+    }
+    for(let gy=0;gy<ch;gy+=gridSize){
+      ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(cw,gy); ctx.stroke();
+    }
+    // Draw blocks
+    for(let b of levelData){
+      if(b.type==='block'){ ctx.fillStyle='cyan'; ctx.fillRect(b.x-scroll,b.y,gridSize,gridSize); }
+      if(b.type==='spike'){ ctx.fillStyle='red'; ctx.beginPath(); ctx.moveTo(b.x-scroll,b.y+gridSize); ctx.lineTo(b.x-scroll+gridSize/2,b.y); ctx.lineTo(b.x-scroll+gridSize,b.y+gridSize); ctx.fill(); }
+    }
+  }
 
+  requestAnimationFrame(update);
+}
+
+window.addEventListener('resize', ()=>{
+  cw=window.innerWidth;
+  ch=window.innerHeight;
+  canvas.width=cw;
+  canvas.height=ch;
+});
+
+update();
+</script>
 </body>
 </html>
