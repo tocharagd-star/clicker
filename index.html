@@ -1,598 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Y — соцсеть + TikHTML</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WebApp</title>
 <style>
-/* ========= Общее ========= */
-:root{--bg:#0d0d0d;--card:#181818;--muted:#999;--accent:#1da1f2}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:#fff;font-family:Inter,Arial,Helvetica,sans-serif;line-height:1.4}
-.container{max-width:900px;margin:20px auto;padding:10px}
-
-/* ========= Топбар ========= */
-#topbar{display:flex;gap:8px;justify-content:center;padding:12px;background:#0b0b0b;border-bottom:1px solid #151515;position:sticky;top:0;z-index:40}
-#topbar button{background:transparent;border:1px solid #222;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
-#topbar .primary{background:var(--accent);border-color:transparent}
-
-/* ========= Блоки ========= */
-.hidden{display:none}
-.card{background:var(--card);padding:14px;border-radius:12px;margin-bottom:12px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
-.row{display:flex;align-items:center;gap:10px}
-.avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:22px}
-.btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer}
-.btn.primary{background:var(--accent);color:#fff}
-.input,textarea,select{width:100%;padding:10px;border-radius:10px;border:none;background:#111;color:#fff;margin-top:8px}
-textarea{min-height:110px;resize:vertical}
-
-/* ========= Лента / проект ========= */
-.tweet,.project{background:#141414;padding:12px;border-radius:10px;margin-bottom:10px}
-.tweet img{max-width:100%;border-radius:10px;margin-top:8px}
-.reacts{margin-top:10px}
-.reacts span{margin-right:12px;cursor:pointer;font-size:18px;opacity:.95}
-.reacts span:hover{transform:scale(1.08)}
-
-.iframe-wrap{margin-top:10px;border-radius:10px;overflow:hidden;border:1px solid #222}
-
-/* ========= Профиль ========= */
-.profile-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.small{font-size:13px;color:var(--muted)}
-.link{color:var(--accent);cursor:pointer}
-
-/* ========= Intro ========= */
-#introOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.85));z-index:60}
-#introCard{width:90%;max-width:720px;background:linear-gradient(180deg,#0f1720,#081018);padding:22px;border-radius:14px;border:1px solid rgba(255,255,255,.04);text-align:center}
-#introCard h1{margin:0 0 8px 0}
-#introCard p{color:#c9d3df;margin-bottom:18px}
-
-/* ========= Адаптив ========= */
-@media (max-width:720px){ .container{padding:12px} .avatar{width:46px;height:46px;font-size:18px} }
+ body{margin:0;font-family:Arial;background:#121212;color:white;overflow-x:hidden}
+ .center{display:flex;justify-content:center;align-items:center}
+ .btn{padding:10px 18px;background:#333;border-radius:8px;cursor:pointer}
+ .input{padding:10px;border-radius:8px;border:none;width:90%}
+ .card{background:#1e1e1e;padding:15px;border-radius:12px;margin:10px 0}
+ .slide{animation:fade .4s}
+ @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
 
-<!-- TOPBAR -->
-<div id="topbar" class="hidden">
-  <button onclick="openFeed()">Лента</button>
-  <button onclick="openCreateTweet()">Создать твит</button>
-  <button onclick="openTikHTML()">TikHTML</button>
-  <button onclick="openCreateTik()">Создать проект</button>
-  <button onclick="openSubscriptions()">Мои подписки</button>
-  <button id="btnLogout" class="hidden" onclick="logout()">Выйти</button>
+<div id="intro" class="center" style="height:100vh;flex-direction:column;text-align:center;">
+ <h1 style="font-size:40px;">Welcome</h1>
+ <div class="btn" onclick="closeIntro()">Start</div>
 </div>
 
-<div class="container">
-
-  <!-- REG -->
-  <div id="register" class="card">
-    <h2>Регистрация</h2>
-    <input id="regNick" class="input" placeholder="Ник (например: tochara)">
-    <input id="regPass" class="input" placeholder="Пароль" type="password">
-    <input id="regPass2" class="input" placeholder="Повторите пароль" type="password">
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn primary" onclick="register()">Создать аккаунт</button>
-      <button class="btn" onclick="showLogin()">Войти</button>
-    </div>
-  </div>
-
-  <!-- LOGIN -->
-  <div id="login" class="card hidden">
-    <h2>Вход</h2>
-    <input id="logNick" class="input" placeholder="Ник">
-    <input id="logPass" class="input" placeholder="Пароль" type="password">
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="btn primary" onclick="login()">Войти</button>
-      <button class="btn" onclick="showRegister()">Назад</button>
-    </div>
-  </div>
-
-  <!-- CREATE TWEET -->
-  <div id="createTweet" class="card hidden">
-    <h3>Создать твит</h3>
-    <textarea id="tweetText" placeholder="Что нового?" class="input"></textarea>
-    <input id="tweetImg" class="input" placeholder="URL картинки (необязательно)">
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn primary" onclick="sendTweet()">Опубликовать</button>
-      <button class="btn" onclick="openFeed()">Отмена</button>
-    </div>
-  </div>
-
-  <!-- FEED -->
-  <div id="feed" class="hidden"></div>
-
-  <!-- TIKHTML LIST -->
-  <div id="tikhtml" class="hidden"></div>
-
-  <!-- CREATE TIK -->
-  <div id="createTik" class="card hidden">
-    <h3>Новый TikHTML проект</h3>
-    <input id="tikName" class="input" placeholder="Название проекта">
-    <textarea id="tikCode" class="input" placeholder="HTML код проекта — можно CSS/JS внутри"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button class="btn primary" onclick="saveTikHTML()">Сохранить проект</button>
-      <button class="btn" onclick="openTikHTML()">Отмена</button>
-    </div>
-  </div>
-
-  <!-- PROFILE -->
-  <div id="profileView" class="hidden"></div>
-
-  <!-- SUBSCRIPTIONS -->
-  <div id="subscriptionsView" class="hidden card"></div>
-
+<div id="auth" class="center slide" style="height:100vh;flex-direction:column;display:none;">
+ <h2>Login / Register</h2>
+ <input id="authUser" class="input" placeholder="Username">
+ <input id="authPass" class="input" placeholder="Password" type="password" style="margin-top:10px;">
+ <div class="btn" style="margin-top:10px" onclick="auth()">Continue</div>
 </div>
 
-<!-- INTRO OVERLAY -->
-<div id="introOverlay" class="">
-  <div id="introCard">
-    <h1>Добро пожаловать в Y + TikHTML</h1>
-    <p>Публикуй короткие записи, добавляй HTML-проекты (игры/мини-приложения) прямо в ленту, смотри профили и подписывайся на авторов.</p>
-    <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn primary" onclick="startApp()">Начать</button>
-      <button class="btn" onclick="skipIntro()">Пропустить (всегда)</button>
-    </div>
-  </div>
+<div id="main" style="display:none;padding:20px;">
+ <h2>Feed</h2>
+ <div class="btn" onclick="showCreateGame()">Создать проект (TikHTML)</div>
+ <div id="feed"></div>
+ <h2>Сообщения</h2>
+ <div class="btn" onclick="openMessages()">Открыть чаты</div>
+</div>
+
+<div id="createGame" style="display:none;padding:20px;">
+ <h2>Новый TikHTML проект</h2>
+ <input id="projName" class="input" placeholder="Название"><br><br>
+ <textarea id="projCode" class="input" style="height:200px" placeholder="HTML код"></textarea><br><br>
+ <div class="btn" onclick="publishGame()">Опубликовать</div>
+</div>
+
+<div id="viewer" style="display:none;padding:0;margin:0;height:100vh;background:black;">
+ <iframe id="viewerFrame" style="width:100%;height:100%;border:none;"></iframe>
+</div>
+
+<div id="profile" style="display:none;padding:20px;">
+ <h2 id="profileName"></h2>
+ <div class="btn" onclick="follow()">Подписаться</div>
+ <h3>Подписки:</h3>
+ <div id="subs"></div>
+ <h3>Проекты пользователя:</h3>
+ <div id="userProjects"></div>
+</div>
+
+<div id="messages" style="display:none;padding:20px;">
+ <h2>Личные и групповые чаты</h2>
+ <div class="btn" onclick="newChat()">Создать чат</div>
+ <div id="chatList"></div>
+ <div id="chatWindow" style="margin-top:20px;"></div>
 </div>
 
 <script>
-/* ================== Конфиг Firebase ==================
-   Используется твой URL базы:
-   https://aitube-8e681-default-rtdb.firebaseio.com/
-   Если нужно, замени dbUrl на свой.
-==================================================== */
-const dbUrl = "https://aitube-8e681-default-rtdb.firebaseio.com/";
+let DB = {users:{}, posts:[], chats:[]};
+let me = null;
 
-/* универсальная функция для работы с RTDB */
-async function fb(path, method = "GET", data = null) {
-  const url = dbUrl + path + ".json";
-  const opts = { method };
-  if (data !== null) opts.body = JSON.stringify(data);
-  const res = await fetch(url, opts);
-  return await res.json();
+function save(){localStorage.setItem("db",JSON.stringify(DB));localStorage.setItem("me",me);} 
+function load(){let d=localStorage.getItem("db");if(d)DB=JSON.parse(d);me=localStorage.getItem("me");}
+load();
+
+function closeIntro(){intro.style.display="none";auth.style.display="flex";}
+
+function auth(){let u=authUser.value.trim(),p=authPass.value.trim();if(!u||!p)return;
+ if(!DB.users[u]) DB.users[u]={password:p,subs:[],projects:[]};
+ if(DB.users[u].password!==p) return;
+ me=u; save();
+ showMain();
 }
 
-/* Элементы UI */
-const topbar = document.getElementById("topbar");
-const regDiv = document.getElementById("register");
-const loginDiv = document.getElementById("login");
-const feedDiv = document.getElementById("feed");
-const createTweetDiv = document.getElementById("createTweet");
-const tikDiv = document.getElementById("tikhtml");
-const createTikDiv = document.getElementById("createTik");
-const profileView = document.getElementById("profileView");
-const subsView = document.getElementById("subscriptionsView");
-const introOverlay = document.getElementById("introOverlay");
-const btnLogout = document.getElementById("btnLogout");
+function showMain(){auth.style.display="none";main.style.display="block";renderFeed();}
 
-/* helpers */
-function hideAllMain(){
-  regDiv.classList.add("hidden");
-  loginDiv.classList.add("hidden");
-  feedDiv.classList.add("hidden");
-  createTweetDiv.classList.add("hidden");
-  tikDiv.classList.add("hidden");
-  createTikDiv.classList.add("hidden");
-  profileView.classList.add("hidden");
-  subsView.classList.add("hidden");
-}
-function showTopbar(show){
-  if(show) topbar.classList.remove("hidden"); else topbar.classList.add("hidden");
+function showCreateGame(){main.style.display="none";createGame.style.display="block";}
+
+function publishGame(){let n=projName.value.trim();let c=projCode.value;
+ if(!n||!c)return;
+ let proj={owner:me,name:n,code:c,id:Date.now()};
+ DB.users[me].projects.push(proj);
+ DB.posts.push(proj);
+ save();
+ createGame.style.display="none";showMain();
 }
 
-/* ========== Intro logic ========= */
-function startApp(){
-  introOverlay.style.display = "none";
-  localStorage.introSeen = "1";
-}
-function skipIntro(){
-  localStorage.introSeen = "1";
-  introOverlay.style.display = "none";
-}
-if(localStorage.introSeen === "1") introOverlay.style.display = "none";
-
-/* ========== Avatar generation ========= */
-function genAvatar(nick){
-  const ch = (nick && nick.length>0) ? nick.charCodeAt(0) : 65;
-  const hue = (ch * 47) % 360;
-  return { bg: `hsl(${hue} 70% 45%)`, letter: (nick||"?").charAt(0).toUpperCase() };
+function renderFeed(){feed.innerHTML="";
+ DB.posts.slice().reverse().forEach(p=>{
+  let d=document.createElement("div");d.className="card slide";
+  d.innerHTML=`<b>${p.name}</b><br>Автор: <span style='cursor:pointer;color:#7cf;' onclick='openProfile("${p.owner}")'>${p.owner}</span><br><div class='btn' onclick='openViewer(${p.id})'>Открыть</div>`;
+  feed.appendChild(d);
+ });
 }
 
-/* ========== Registration / Login / Logout ========== */
-async function register(){
-  const nick = document.getElementById("regNick").value.trim();
-  const pass = document.getElementById("regPass").value;
-  const pass2 = document.getElementById("regPass2").value;
-  if(!nick || !pass || pass !== pass2){ alert("Ошибка: проверь ник/пароли"); return; }
-
-  const users = await fb("users");
-  if(users && users[nick]){ alert("Ник занят"); return; }
-
-  const userObj = { pass, react: {}, follows: {} };
-  await fb("users/" + nick, "PUT", userObj);
-  alert("Аккаунт создан");
-  showLogin();
+function openViewer(id){let p=DB.posts.find(x=>x.id==id);
+ viewer.style.display="block";main.style.display="none";
+ let blob=new Blob([p.code],{type:"text/html"});
+ viewerFrame.src=URL.createObjectURL(blob);
 }
 
-function showLogin(){ regDiv.classList.add("hidden"); loginDiv.classList.remove("hidden"); }
-function showRegister(){ loginDiv.classList.add("hidden"); regDiv.classList.remove("hidden"); }
-
-async function login(){
-  const nick = document.getElementById("logNick").value.trim();
-  const pass = document.getElementById("logPass").value;
-  if(!nick || !pass){ alert("Введите данные"); return; }
-
-  const user = await fb("users/" + nick);
-  if(!user || user.pass !== pass){ alert("Неверный логин/пароль"); return; }
-
-  localStorage.nick = nick;
-  initAfterLogin();
+function openProfile(u){main.style.display="none";profile.style.display="block";
+ profileName.textContent=u;
+ let user=DB.users[u];
+ subs.innerHTML=user.subs.join(", ") || "нет";
+ userProjects.innerHTML="";
+ user.projects.forEach(p=>{
+  let d=document.createElement("div");d.className="card";
+  d.innerHTML=`${p.name} <div class='btn' onclick='openViewer(${p.id})'>Открыть</div>`;
+  userProjects.appendChild(d);
+ });
 }
 
-/* Logout */
-function logout(){
-  delete localStorage.nick;
-  btnLogout.classList.add("hidden");
-  showTopbar(false);
-  hideAllMain();
-  regDiv.classList.remove("hidden");
-  // show intro again only if not skipped permanently (we don't reset localStorage.introSeen)
+function follow(){let s=DB.users[me].subs;
+ if(!s.includes(profileName.textContent)) s.push(profileName.textContent);
+ save(); openProfile(profileName.textContent);
 }
 
-/* Авто-вход (если есть) */
-window.addEventListener("load", async () => {
-  if(localStorage.nick){
-    const user = await fb("users/" + localStorage.nick);
-    if(user){ initAfterLogin(); return; }
-    // если пользователь удалён на сервере — очистим
-    delete localStorage.nick;
-  }
-  // показать рег/логин
-  regDiv.classList.remove("hidden");
-});
+function openMessages(){main.style.display="none";messages.style.display="block";renderChats();}
 
-/* Инициализация после логина */
-function initAfterLogin(){
-  showTopbar(true);
-  btnLogout.classList.remove("hidden");
-  regDiv.classList.add("hidden");
-  loginDiv.classList.add("hidden");
-  openFeed();
+function newChat(){let n=prompt("Имя чата");if(!n)return;
+ DB.chats.push({name:n, msgs:[]}); save(); renderChats();}
+
+function renderChats(){chatList.innerHTML="";
+ DB.chats.forEach((c,i)=>{
+  let d=document.createElement("div");d.className="card";
+  d.innerHTML=`${c.name} <div class='btn' onclick='openChat(${i})'>Открыть</div>`;
+  chatList.appendChild(d);
+ });
 }
 
-/* ========== TWEETS ========= */
-async function sendTweet(){
-  const text = document.getElementById("tweetText").value.trim();
-  const img = document.getElementById("tweetImg").value?.trim();
-  const nick = localStorage.nick;
-  if(!nick) return alert("Войдите");
-  if(!text && !img) return alert("Пустой твит");
-
-  await fb("tweets", "POST", { nick, text, img: img || "", time: Date.now(), reactions: { like:0, laugh:0, wow:0 } });
-  document.getElementById("tweetText").value = "";
-  document.getElementById("tweetImg").value = "";
-  openFeed();
+function openChat(i){let c=DB.chats[i];
+ chatWindow.innerHTML = `<h3>${c.name}</h3><div id='msgBox'></div>
+ <input id='reply' class='input' placeholder='Сообщение'>
+ <div class='btn' onclick='sendMsg(${i})'>Отправить</div>`;
+ renderMsgs(i);
 }
 
-/* Реакции — защита от спама */
-async function react(tweetId, type){
-  const nick = localStorage.nick;
-  if(!nick) return alert("Войдите");
-
-  const [tweet, user] = await Promise.all([ fb("tweets/" + tweetId), fb("users/" + nick) ]);
-  if(!tweet || !user) return;
-
-  user.react = user.react || {};
-  const prev = user.react[tweetId] || null;
-
-  if(prev === type){
-    // снять
-    tweet.reactions[type] = Math.max(0, (tweet.reactions[type] || 0) - 1);
-    delete user.react[tweetId];
-  } else {
-    if(prev){
-      tweet.reactions[prev] = Math.max(0, (tweet.reactions[prev] || 0) - 1);
-    }
-    tweet.reactions[type] = (tweet.reactions[type] || 0) + 1;
-    user.react[tweetId] = type;
-  }
-
-  // записать оба
-  await fb("tweets/" + tweetId, "PUT", tweet);
-  await fb("users/" + nick, "PUT", user);
-  await loadFeed(); // обновим
+function renderMsgs(i){let box=document.getElementById("msgBox");box.innerHTML="";
+ DB.chats[i].msgs.forEach((m,idx)=>{
+  let d=document.createElement("div");d.className="card";
+  d.innerHTML=`<b>${m.user}</b>: ${m.text}
+  <div class='btn' onclick='replyTo(${i},${idx})'>Ответить</div>
+  ${m.reply?`<div style='margin-left:20px;'>↳ <b>${m.reply.user}</b>: ${m.reply.text}</div>`:""}`;
+  box.appendChild(d);
+ });
 }
 
-/* ========== LOAD FEED ========= */
-async function loadFeed(){
-  hideAllMain();
-  feedDiv.classList.remove("hidden");
-  feedDiv.innerHTML = "";
-
-  const tweets = await fb("tweets");
-  if(!tweets){ feedDiv.innerHTML = `<div class="card">Пока нет твитов</div>`; return; }
-
-  const arr = Object.entries(tweets).sort((a,b) => b[1].time - a[1].time);
-  for(const [id, t] of arr){
-    const av = genAvatar(t.nick);
-    const el = document.createElement("div");
-    el.className = "tweet card";
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="avatar" style="background:${av.bg};">${av.letter}</div>
-          <div>
-            <div style="font-weight:700;cursor:pointer" onclick="openProfile('${t.nick}')">${t.nick}</div>
-            <div class="small">${new Date(t.time).toLocaleString()}</div>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:8px">${escapeHtml(t.text || "")}</div>
-      ${t.img ? `<img src="${escapeAttr(t.img)}" alt="img">` : ""}
-      <div class="reacts small">
-        <span onclick="react('${id}','like')">❤️ ${t.reactions?.like||0}</span>
-        <span onclick="react('${id}','laugh')">😂 ${t.reactions?.laugh||0}</span>
-        <span onclick="react('${id}','wow')">😮 ${t.reactions?.wow||0}</span>
-      </div>
-    `;
-    feedDiv.appendChild(el);
-  }
+function sendMsg(i){let t=reply.value.trim();if(!t)return;
+ DB.chats[i].msgs.push({user:me,text:t}); save(); openChat(i);
 }
 
-/* ========= TikHTML (projects) ========= */
-async function saveTikHTML(){
-  const name = document.getElementById("tikName").value.trim();
-  const code = document.getElementById("tikCode").value;
-  const nick = localStorage.nick;
-  if(!nick) return alert("Войдите");
-  if(!name || !code) return alert("Заполните поля");
-
-  await fb("tikhtml", "POST", { nick, name, code, time: Date.now() });
-  document.getElementById("tikName").value = "";
-  document.getElementById("tikCode").value = "";
-  openTikHTML();
+function replyTo(i,m){let t=prompt("Ответ");if(!t)return;
+ DB.chats[i].msgs[m].reply={user:me,text:t}; save(); openChat(i);
 }
-
-/* При создании iframe — используем element.srcdoc (не innerHTML!) чтобы работало */
-async function loadTikHTML(){
-  hideAllMain();
-  tikDiv.classList.remove("hidden");
-  tikDiv.innerHTML = "";
-
-  const projects = await fb("tikhtml");
-  if(!projects){ tikDiv.innerHTML = `<div class="card">Пока нет проектов</div>`; return; }
-  const arr = Object.entries(projects).sort((a,b)=>b[1].time - a[1].time);
-
-  for(const [id,p] of arr){
-    const av = genAvatar(p.nick);
-    const card = document.createElement("div");
-    card.className = "project card";
-    // header
-    const header = document.createElement("div");
-    header.className = "row";
-    header.style.justifyContent = "space-between";
-    header.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px">
-        <div class="avatar" style="background:${av.bg};">${av.letter}</div>
-        <div>
-          <div style="font-weight:700;cursor:pointer" onclick="openProfile('${p.nick}')">${p.nick}</div>
-          <div class="small">${new Date(p.time).toLocaleString()}</div>
-        </div>
-      </div>
-      <div style="text-align:right"><div style="font-weight:700">${escapeHtml(p.name)}</div></div>
-    `;
-    card.appendChild(header);
-
-    // iframe wrapper
-    const wrap = document.createElement("div");
-    wrap.className = "iframe-wrap";
-    const iframe = document.createElement("iframe");
-    // использовать srcdoc напрямую — сюда помещаем чистый HTML (без кодирования)
-    iframe.srcdoc = p.code || "<div style='padding:16px;color:#000'>Empty</div>";
-    wrap.appendChild(iframe);
-    card.appendChild(wrap);
-
-    // footer (open project in new window)
-    const footer = document.createElement("div");
-    footer.style.marginTop = "8px";
-    footer.className = "small";
-    const openBtn = document.createElement("button");
-    openBtn.className = "btn";
-    openBtn.textContent = "Открыть в новом окне";
-    openBtn.onclick = () => {
-      // создаём blob URL чтобы открыть srcdoc content в новом окне
-      const blob = new Blob([p.code], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      setTimeout(()=>URL.revokeObjectURL(url), 20000);
-    };
-    footer.appendChild(openBtn);
-    card.appendChild(footer);
-
-    tikDiv.appendChild(card);
-  }
-}
-
-/* ========= PROFILE & SUBSCRIPTIONS ========= */
-async function openProfile(nick){
-  hideAllMain();
-  profileView.classList.remove("hidden");
-  profileView.innerHTML = "";
-  const user = await fb("users/" + nick);
-  if(!user) { profileView.innerHTML = `<div class="card">Пользователь не найден</div>`; return; }
-
-  const av = genAvatar(nick);
-  const me = localStorage.nick;
-
-  // header
-  const header = document.createElement("div");
-  header.className = "card profile-head";
-  header.innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="avatar" style="background:${av.bg}">${av.letter}</div>
-      <div>
-        <div style="font-weight:700">${nick}</div>
-        <div class="small">${Object.keys(user.follows||{}).length} подписок</div>
-      </div>
-    </div>
-  `;
-  profileView.appendChild(header);
-
-  // actions (follow/unfollow or edit)
-  const actions = document.createElement("div");
-  actions.className = "card";
-  if(me && me !== nick){
-    const meUser = await fb("users/" + me);
-    const isFollowing = !!(meUser && meUser.follows && meUser.follows[nick]);
-    const btn = document.createElement("button");
-    btn.className = "btn primary";
-    btn.textContent = isFollowing ? "Отписаться" : "Подписаться";
-    btn.onclick = async () => {
-      meUser.follows = meUser.follows || {};
-      if(isFollowing){
-        delete meUser.follows[nick];
-      } else {
-        meUser.follows[nick] = true;
-      }
-      await fb("users/" + me, "PUT", meUser);
-      openProfile(nick); // переработаем отображение
-    };
-    actions.appendChild(btn);
-  } else if(!me){
-    const info = document.createElement("div");
-    info.textContent = "Войдите, чтобы подписываться и взаимодействовать";
-    actions.appendChild(info);
-  } else {
-    const info = document.createElement("div");
-    info.textContent = "Это ваш профиль";
-    actions.appendChild(info);
-  }
-  profileView.appendChild(actions);
-
-  // Пользовательские проекты (tikhtml)
-  const projectsTitle = document.createElement("div");
-  projectsTitle.className = "card";
-  projectsTitle.innerHTML = `<b>Проекты ${nick}</b>`;
-  profileView.appendChild(projectsTitle);
-
-  const allProjects = await fb("tikhtml");
-  if(allProjects){
-    const arr = Object.entries(allProjects).filter(([,p]) => p.nick === nick).sort((a,b)=>b[1].time - a[1].time);
-    if(arr.length === 0){
-      const empty = document.createElement("div"); empty.className = "card small"; empty.textContent = "Нет проектов";
-      profileView.appendChild(empty);
-    } else {
-      for(const [id,p] of arr){
-        const card = document.createElement("div");
-        card.className = "card project";
-        const av2 = genAvatar(p.nick);
-        card.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px">
-            <div class="avatar" style="background:${av2.bg}">${av2.letter}</div>
-            <div>
-              <div style="font-weight:700">${escapeHtml(p.name)}</div>
-              <div class="small">${new Date(p.time).toLocaleString()}</div>
-            </div>
-          </div>
-        `;
-        const wrap = document.createElement("div"); wrap.className = "iframe-wrap";
-        const iframe = document.createElement("iframe"); iframe.srcdoc = p.code || "<div></div>";
-        wrap.appendChild(iframe);
-        card.appendChild(wrap);
-        profileView.appendChild(card);
-      }
-    }
-  }
-
-  // Твиты пользователя
-  const tweetsTitle = document.createElement("div");
-  tweetsTitle.className = "card";
-  tweetsTitle.innerHTML = `<b>Твиты ${nick}</b>`;
-  profileView.appendChild(tweetsTitle);
-
-  const tweets = await fb("tweets");
-  const arrTweets = tweets ? Object.entries(tweets).filter(([,t]) => t.nick === nick).sort((a,b)=>b[1].time - a[1].time) : [];
-  if(arrTweets.length === 0){
-    const empty = document.createElement("div"); empty.className = "card small"; empty.textContent = "Нет твитов";
-    profileView.appendChild(empty);
-  } else {
-    for(const [id,t] of arrTweets){
-      const card = document.createElement("div"); card.className = "card tweet";
-      card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px">
-          <div class="avatar" style="background:${av.bg}">${av.letter}</div>
-          <div>
-            <div style="font-weight:700">${t.nick}</div>
-            <div class="small">${new Date(t.time).toLocaleString()}</div>
-          </div>
-        </div>
-        <div style="margin-top:8px">${escapeHtml(t.text||"")}</div>
-        ${t.img ? `<img src="${escapeAttr(t.img)}">` : ""}
-      `;
-      profileView.appendChild(card);
-    }
-  }
-}
-
-/* Просмотр подписок текущего пользователя */
-async function openSubscriptions(){
-  hideAllMain();
-  subsView.classList.remove("hidden");
-  subsView.innerHTML = "<h3>Мои подписки</h3>";
-
-  const me = localStorage.nick;
-  if(!me){ subsView.innerHTML += "<div class='small card'>Войдите чтобы увидеть подписки</div>"; return; }
-  const user = await fb("users/" + me);
-  const follows = user && user.follows ? Object.keys(user.follows) : [];
-  if(follows.length === 0){ subsView.innerHTML += "<div class='card small'>Вы никого не подписаны</div>"; return; }
-
-  // показать список и кнопку перейти в профиль
-  for(const u of follows){
-    const av = genAvatar(u);
-    const row = document.createElement("div"); row.className = "card";
-    row.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onclick="openProfile('${u}')">
-          <div class="avatar" style="background:${av.bg}">${av.letter}</div>
-          <div><div style="font-weight:700">${u}</div></div>
-        </div>
-        <div>
-          <button class="btn" onclick="unfollow('${u}')">Отписаться</button>
-        </div>
-      </div>
-    `;
-    subsView.appendChild(row);
-  }
-}
-
-/* unfollow helper */
-async function unfollow(target){
-  const me = localStorage.nick;
-  if(!me) return;
-  const meUser = await fb("users/" + me);
-  if(!meUser || !meUser.follows) return;
-  delete meUser.follows[target];
-  await fb("users/" + me, "PUT", meUser);
-  openSubscriptions();
-}
-
-/* ========= Навигация простая ========= */
-function openFeed(){ loadFeed(); }
-function openCreateTweet(){ hideAllMain(); createTweetDiv.classList.remove("hidden"); }
-function openTikHTML(){ loadTikHTML(); }
-function openCreateTik(){ hideAllMain(); createTikDiv.classList.remove("hidden"); }
-
-/* ========== Утилиты безопасного вывода ========= */
-function escapeHtml(s){
-  if(!s) return "";
-  return s.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
-}
-function escapeAttr(s){
-  if(!s) return "";
-  return s.replaceAll('"','%22');
-}
-
-/* ========== Подсказки для интерфейса: по умолчанию откроем feed если залогинен ========== */
 </script>
+
 </body>
 </html>
