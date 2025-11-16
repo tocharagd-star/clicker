@@ -1,214 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Geometry Dash Full</title>
+<title>Y — соц сеть</title>
 <style>
-  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; font-family:sans-serif; background:#2e2e2e; }
-  #gui { position:absolute; top:0; left:0; width:100%; background:#222; padding:5px; display:flex; flex-wrap:wrap; align-items:center; z-index:10; }
-  #gui button, #gui select { margin:2px; padding:5px; font-size:14px; cursor:pointer; }
-  canvas { display:block; background:#333; margin:0 auto; }
-  #scoreDisplay { color:#fff; margin-left:10px; }
+body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial;
+}
+.center {
+    display: flex; flex-direction: column;
+    width: 300px; margin: 40px auto;
+}
+input {
+    padding: 10px; margin: 5px 0;
+    border: none; border-radius: 5px;
+    width: 100%;
+}
+button {
+    padding: 10px; border: none;
+    width: 100%; border-radius: 5px;
+    background: #1da1f2; color: white;
+    font-size: 16px; cursor: pointer;
+}
+.hidden { display: none; }
+#feed {
+    max-width: 600px; margin: 20px auto;
+}
+.tweet {
+    background: #222; padding: 15px;
+    margin-bottom: 10px; border-radius: 10px;
+}
+.reacts span {
+    margin-right: 10px; cursor: pointer;
+}
+.avatar {
+    width: 60px; height: 60px; border-radius: 50%;
+    object-fit: cover; margin-bottom: 10px;
+}
 </style>
 </head>
 <body>
 
-<div id="gui">
-  <button id="playBtn">Играть</button>
-  <button id="editorBtn">Редактор</button>
-  <select id="toolSelect">
-    <option value="place">Поставить</option>
-    <option value="move">Переместить</option>
-    <option value="delete">Удалить</option>
-  </select>
-  <select id="blockSelect">
-    <option value="block">Блок</option>
-    <option value="spike">Шип</option>
-  </select>
-  <button id="saveLevel">Сохранить</button>
-  <button id="loadLevel">Загрузить</button>
-  <input type="text" id="levelName" placeholder="Имя уровня">
-  <span id="scoreDisplay">0</span>
+<!-- ========== РЕГИСТРАЦИЯ ========== -->
+<div id="register" class="center">
+    <h2>Регистрация</h2>
+    <input id="regNick" placeholder="Ник">
+    <input id="regPass" placeholder="Пароль" type="password">
+    <input id="regPass2" placeholder="Повторите пароль" type="password">
+    <input id="regAvatar" placeholder="Ссылка на аватарку">
+    <button onclick="register()">Создать аккаунт</button>
+    <button onclick="showLogin()">У меня уже есть аккаунт</button>
 </div>
 
-<canvas id="gameCanvas"></canvas>
+<!-- ========== ВХОД ========== -->
+<div id="login" class="center hidden">
+    <h2>Вход</h2>
+    <input id="logNick" placeholder="Ник">
+    <input id="logPass" placeholder="Пароль" type="password">
+    <button onclick="login()">Войти</button>
+    <button onclick="showRegister()">Создать аккаунт</button>
+</div>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<!-- ========== МЕНЮ / ТВИТЫ ========== -->
+<div id="menu" class="hidden" style="padding:20px;">
+    <h2>Лента</h2>
+
+    <div>
+        <textarea id="tweetText" placeholder="Что нового?" style="width:100%; height:60px; border-radius:10px; padding:10px;"></textarea>
+        <input id="tweetImg" placeholder="URL картинки (необязательно)" style="width:100%; margin-top:5px;">
+        <button onclick="sendTweet()">Опубликовать</button>
+    </div>
+
+    <div id="feed"></div>
+</div>
+
 <script>
-const firebaseConfig = { databaseURL:"https://aitube-8e681-default-rtdb.firebaseio.com/" };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// ========== FIREBASE ==========
+const dbUrl = "https://aitube-8e681-default-rtdb.firebaseio.com/";
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let cw = window.innerWidth;
-let ch = window.innerHeight;
-canvas.width = cw;
-canvas.height = ch;
-
-// Tools
-let mode = 'menu'; // menu, play, edit
-let tool = 'place';
-let blockType = 'block';
-
-// Grid
-const gridSize = 40;
-
-// Player
-let player = { x:50, y:ch-70, w:30, h:30, vy:0, onGround:false };
-let gravity = 0.7;
-let jumpPower = -12;
-let speed = 4;
-
-// Level
-let levelData = [];
-let scroll = 0;
-let score = 0;
-
-// UI Elements
-const playBtn = document.getElementById('playBtn');
-const editorBtn = document.getElementById('editorBtn');
-const toolSelect = document.getElementById('toolSelect');
-const blockSelect = document.getElementById('blockSelect');
-const saveBtn = document.getElementById('saveLevel');
-const loadBtn = document.getElementById('loadLevel');
-const levelNameInput = document.getElementById('levelName');
-const scoreDisplay = document.getElementById('scoreDisplay');
-
-playBtn.onclick = () => { startPlay(); };
-editorBtn.onclick = () => { startEditor(); };
-toolSelect.onchange = () => { tool = toolSelect.value; };
-blockSelect.onchange = () => { blockType = blockSelect.value; };
-
-// Save/Load
-saveBtn.onclick = () => {
-  const name = levelNameInput.value || 'default';
-  db.ref('levels/'+name).set(levelData);
-  alert('Уровень сохранён!');
-};
-loadBtn.onclick = () => {
-  const name = levelNameInput.value || 'default';
-  db.ref('levels/'+name).once('value').then(snapshot => {
-    levelData = snapshot.val() || [];
-    alert('Уровень загружен!');
-  });
-};
-
-// Editor
-function startEditor(){
-  mode='edit';
-  scroll=0;
+async function fb(path, method="GET", data=null) {
+    let url = dbUrl + path + ".json";
+    return await fetch(url, {
+        method,
+        body: data ? JSON.stringify(data) : undefined
+    }).then(r=>r.json());
 }
 
-canvas.addEventListener('pointerdown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX + scroll)/gridSize)*gridSize;
-  const y = Math.floor((e.clientY)/gridSize)*gridSize;
-  if(mode==='edit'){
-    if(tool==='place'){
-      levelData.push({x,y,type:blockType});
-    } else if(tool==='delete'){
-      levelData = levelData.filter(b=>!(b.x===x && b.y===y));
-    } else if(tool==='move'){
-      // select first block and drag
-      selectedBlock = levelData.find(b=>b.x===x && b.y===y);
+// ========== UI ==========
+function showLogin(){ registerDiv.classList.add("hidden"); loginDiv.classList.remove("hidden"); }
+function showRegister(){ loginDiv.classList.add("hidden"); registerDiv.classList.remove("hidden"); }
+function showMenu(){ registerDiv.classList.add("hidden"); loginDiv.classList.add("hidden"); menuDiv.classList.remove("hidden"); }
+
+const registerDiv = document.getElementById("register");
+const loginDiv = document.getElementById("login");
+const menuDiv = document.getElementById("menu");
+
+// ========== РЕГИСТРАЦИЯ ==========
+async function register(){
+    let nick = regNick.value.trim();
+    let pass = regPass.value;
+    let pass2 = regPass2.value;
+    let avatar = regAvatar.value.trim();
+
+    if(!nick || !pass || pass !== pass2){ alert("Ошибка"); return; }
+
+    let users = await fb("users");
+    if(users && users[nick]){
+        alert("Ник занят");
+        return;
     }
-  }
-});
 
-let selectedBlock=null;
-canvas.addEventListener('pointermove', e=>{
-  if(mode==='edit' && tool==='move' && selectedBlock){
-    const x = Math.floor((e.clientX + scroll)/gridSize)*gridSize;
-    const y = Math.floor((e.clientY)/gridSize)*gridSize;
-    selectedBlock.x=x; selectedBlock.y=y;
-  }
-});
-canvas.addEventListener('pointerup', e=>{
-  selectedBlock=null;
-});
-
-// Game
-function startPlay(){
-  mode='play';
-  scroll=0; score=0;
-  player.x=50; player.y=ch-70; player.vy=0; player.onGround=false;
-  requestAnimationFrame(update);
+    await fb("users/"+nick, "PUT", {pass, avatar});
+    alert("Аккаунт создан");
+    showLogin();
 }
 
-// Controls
-let jumpPressed=false;
-document.addEventListener('keydown', e=>{
-  if(e.code==='Space') jumpPressed=true;
-});
-document.addEventListener('keyup', e=>{
-  if(e.code==='Space') jumpPressed=false;
-});
-canvas.addEventListener('touchstart', e=>{ jumpPressed=true; });
-canvas.addEventListener('touchend', e=>{ jumpPressed=false; });
+// ========== ВХОД ==========
+async function login(){
+    let nick = logNick.value.trim();
+    let pass = logPass.value;
 
-function update(){
-  ctx.clearRect(0,0,cw,ch);
-
-  if(mode==='play'){
-    // Physics
-    if(jumpPressed && player.onGround) player.vy=jumpPower;
-    player.vy+=gravity;
-    player.y+=player.vy;
-    if(player.y+player.h>ch){ player.y=ch-player.h; player.vy=0; player.onGround=true; }
-    else player.onGround=false;
-
-    // Scroll
-    scroll+=speed;
-    score=Math.floor(scroll/10);
-    scoreDisplay.innerText=score;
-
-    // Draw obstacles
-    for(let b of levelData){
-      const bx=b.x-scroll;
-      const by=b.y;
-      if(b.type==='block'){ ctx.fillStyle='cyan'; ctx.fillRect(bx,by,gridSize,gridSize); }
-      if(b.type==='spike'){ ctx.fillStyle='red'; ctx.beginPath(); ctx.moveTo(bx,by+gridSize); ctx.lineTo(bx+gridSize/2,by); ctx.lineTo(bx+gridSize,by+gridSize); ctx.fill(); }
-      // Collision
-      if(player.x<bx+gridSize && player.x+player.w>bx && player.y<by+gridSize && player.y+player.h>by){
-        startPlay();
-      }
+    let user = await fb("users/"+nick);
+    if(!user || user.pass !== pass){
+        alert("Неверно");
+        return;
     }
 
-    // Draw player
-    ctx.fillStyle='yellow';
-    ctx.fillRect(player.x,player.y,player.w,player.h);
-  }
-
-  if(mode==='edit'){
-    // Draw grid
-    ctx.strokeStyle='#555';
-    for(let gx=0;gx<cw;gx+=gridSize){
-      ctx.beginPath(); ctx.moveTo(gx,0); ctx.lineTo(gx,ch); ctx.stroke();
-    }
-    for(let gy=0;gy<ch;gy+=gridSize){
-      ctx.beginPath(); ctx.moveTo(0,gy); ctx.lineTo(cw,gy); ctx.stroke();
-    }
-    // Draw blocks
-    for(let b of levelData){
-      if(b.type==='block'){ ctx.fillStyle='cyan'; ctx.fillRect(b.x-scroll,b.y,gridSize,gridSize); }
-      if(b.type==='spike'){ ctx.fillStyle='red'; ctx.beginPath(); ctx.moveTo(b.x-scroll,b.y+gridSize); ctx.lineTo(b.x-scroll+gridSize/2,b.y); ctx.lineTo(b.x-scroll+gridSize,b.y+gridSize); ctx.fill(); }
-    }
-  }
-
-  requestAnimationFrame(update);
+    localStorage.nick = nick;
+    showMenu();
+    loadFeed();
 }
 
-window.addEventListener('resize', ()=>{
-  cw=window.innerWidth;
-  ch=window.innerHeight;
-  canvas.width=cw;
-  canvas.height=ch;
-});
+// ========== ПУБЛИКАЦИЯ ТВИТА ==========
+async function sendTweet(){
+    let text = tweetText.value.trim();
+    let img = tweetImg.value.trim();
+    let nick = localStorage.nick;
 
-update();
+    if(!text && !img) return;
+
+    await fb("tweets", "POST", {
+        nick, text, img,
+        time: Date.now(),
+        reactions: {like:0, laugh:0, wow:0}
+    });
+
+    tweetText.value = "";
+    tweetImg.value = "";
+    loadFeed();
+}
+
+// ========== РЕАКЦИИ ==========
+async function react(id, type){
+    let tweet = await fb("tweets/"+id);
+    if(!tweet) return;
+
+    tweet.reactions[type]++;
+
+    await fb("tweets/"+id, "PUT", tweet);
+    loadFeed();
+}
+
+// ========== ЛЕНТА ==========
+async function loadFeed(){
+    let feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    let tweets = await fb("tweets");
+    if(!tweets) return;
+
+    let items = Object.entries(tweets).sort((a,b)=>b[1].time - a[1].time);
+
+    for(let [id,t] of items){
+        let html = `
+        <div class="tweet">
+            <b>${t.nick}</b><br>
+            ${t.text? `<div>${t.text}</div>`:""}
+            ${t.img? `<img src="${t.img}" style="width:100%;margin-top:10px;border-radius:10px;">`:""}
+            <div class="reacts" style="margin-top:10px;">
+                <span onclick="react('${id}','like')">❤️ ${t.reactions.like}</span>
+                <span onclick="react('${id}','laugh')">😂 ${t.reactions.laugh}</span>
+                <span onclick="react('${id}','wow')">😮 ${t.reactions.wow}</span>
+            </div>
+        </div>
+        `;
+        feed.innerHTML += html;
+    }
+}
 </script>
+
 </body>
 </html>
