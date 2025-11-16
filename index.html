@@ -2,184 +2,288 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Y — соц сеть</title>
+<title>Y — соцсеть</title>
 <style>
 body {
     margin: 0;
-    background: #111;
+    background: #0d0d0d;
     color: white;
     font-family: Arial;
+    overflow-x: hidden;
 }
-.center {
-    display: flex; flex-direction: column;
-    width: 300px; margin: 40px auto;
-}
-input {
-    padding: 10px; margin: 5px 0;
-    border: none; border-radius: 5px;
+
+/* ======= АНИМАЦИИ ======= */
+.fade { animation: fade .3s ease; }
+@keyframes fade { from{opacity:0; transform:translateY(5px);} to{opacity:1;} }
+
+/* ======= ИНПУТЫ, КНОПКИ ======= */
+input, textarea {
     width: 100%;
+    padding: 12px;
+    margin: 6px 0;
+    border-radius: 10px;
+    border: none;
+    background: #1a1a1a;
+    color: white;
 }
 button {
-    padding: 10px; border: none;
-    width: 100%; border-radius: 5px;
-    background: #1da1f2; color: white;
-    font-size: 16px; cursor: pointer;
+    width: 100%;
+    padding: 12px;
+    margin-top: 8px;
+    border-radius: 10px;
+    border: none;
+    background: #1da1f2;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: .15s;
 }
-.hidden { display: none; }
-#feed {
-    max-width: 600px; margin: 20px auto;
+button:hover { background: #0c85d0; }
+
+/* ======= МЕНЮ ======= */
+#topbar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 15px;
+    background: #111;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 1px solid #222;
 }
+#topbar button {
+    width: auto;
+    padding: 10px 20px;
+}
+
+/* ======= КОНТЕЙНЕР ======= */
+.container { max-width: 600px; margin: 30px auto; padding: 10px; }
+
+/* ======= ТВИТ ======= */
 .tweet {
-    background: #222; padding: 15px;
-    margin-bottom: 10px; border-radius: 10px;
+    background: #181818;
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: .2s;
 }
+.tweet:hover { background:#202020; }
+
+.tweet img { 
+    width: 100%; 
+    border-radius: 10px; 
+    margin-top: 10px; 
+}
+
+/* ======= РЕАКЦИИ ======= */
 .reacts span {
-    margin-right: 10px; cursor: pointer;
+    margin-right: 15px;
+    cursor: pointer;
+    transition: .15s;
+    font-size: 18px;
 }
+.reacts span:hover { transform: scale(1.15); }
+
+/* ======= СКРЫТЫЕ БЛОКИ ======= */
+.hidden { display:none; }
+
+/* ======= АВАТАРКА ======= */
 .avatar {
-    width: 60px; height: 60px; border-radius: 50%;
-    object-fit: cover; margin-bottom: 10px;
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #1da1f2;
 }
+.userRow { display:flex; align-items:center; margin-bottom:10px; }
+
 </style>
 </head>
 <body>
 
-<!-- ========== РЕГИСТРАЦИЯ ========== -->
-<div id="register" class="center">
+<!-- ========= ВЕРХНЕЕ МЕНЮ ========= -->
+<div id="topbar" class="hidden">
+    <button onclick="openFeed()">Лента</button>
+    <button onclick="openCreate()">Создать твит</button>
+</div>
+
+
+<!-- ========= РЕГИСТРАЦИЯ ========= -->
+<div id="register" class="container fade">
     <h2>Регистрация</h2>
     <input id="regNick" placeholder="Ник">
     <input id="regPass" placeholder="Пароль" type="password">
-    <input id="regPass2" placeholder="Повторите пароль" type="password">
-    <input id="regAvatar" placeholder="Ссылка на аватарку">
+    <input id="regPass2" placeholder="Повторить пароль" type="password">
+    <input id="regAvatar" placeholder="URL аватарки">
     <button onclick="register()">Создать аккаунт</button>
-    <button onclick="showLogin()">У меня уже есть аккаунт</button>
+    <button onclick="showLogin()">Войти</button>
 </div>
 
-<!-- ========== ВХОД ========== -->
-<div id="login" class="center hidden">
+<!-- ========= ВХОД ========= -->
+<div id="login" class="container hidden fade">
     <h2>Вход</h2>
     <input id="logNick" placeholder="Ник">
     <input id="logPass" placeholder="Пароль" type="password">
     <button onclick="login()">Войти</button>
-    <button onclick="showRegister()">Создать аккаунт</button>
+    <button onclick="showRegister()">Назад</button>
 </div>
 
-<!-- ========== МЕНЮ / ТВИТЫ ========== -->
-<div id="menu" class="hidden" style="padding:20px;">
-    <h2>Лента</h2>
-
-    <div>
-        <textarea id="tweetText" placeholder="Что нового?" style="width:100%; height:60px; border-radius:10px; padding:10px;"></textarea>
-        <input id="tweetImg" placeholder="URL картинки (необязательно)" style="width:100%; margin-top:5px;">
-        <button onclick="sendTweet()">Опубликовать</button>
-    </div>
-
-    <div id="feed"></div>
+<!-- ========= СОЗДАТЬ ТВИТ ========= -->
+<div id="createTweet" class="container hidden fade">
+    <h2>Создать твит</h2>
+    <textarea id="tweetText" placeholder="Что нового?"></textarea>
+    <input id="tweetImg" placeholder="URL картинки (необязательно)">
+    <button onclick="sendTweet()">Опубликовать</button>
 </div>
+
+<!-- ========= ЛЕНТА ========= -->
+<div id="feed" class="container hidden fade"></div>
+
 
 <script>
-// ========== FIREBASE ==========
+/* ================= FIREBASE ================= */
+
 const dbUrl = "https://aitube-8e681-default-rtdb.firebaseio.com/";
 
 async function fb(path, method="GET", data=null) {
-    let url = dbUrl + path + ".json";
-    return await fetch(url, {
+    let res = await fetch(dbUrl + path + ".json", {
         method,
-        body: data ? JSON.stringify(data) : undefined
-    }).then(r=>r.json());
+        body: data ? JSON.stringify(data) : null
+    });
+    return await res.json();
 }
 
-// ========== UI ==========
-function showLogin(){ registerDiv.classList.add("hidden"); loginDiv.classList.remove("hidden"); }
-function showRegister(){ loginDiv.classList.add("hidden"); registerDiv.classList.remove("hidden"); }
-function showMenu(){ registerDiv.classList.add("hidden"); loginDiv.classList.add("hidden"); menuDiv.classList.remove("hidden"); }
+/* ================= UI ================= */
+const reg = document.getElementById("register");
+const log = document.getElementById("login");
+const feed = document.getElementById("feed");
+const create = document.getElementById("createTweet");
+const topbar = document.getElementById("topbar");
 
-const registerDiv = document.getElementById("register");
-const loginDiv = document.getElementById("login");
-const menuDiv = document.getElementById("menu");
+function showLogin(){ reg.classList.add("hidden"); log.classList.remove("hidden"); }
+function showRegister(){ log.classList.add("hidden"); reg.classList.remove("hidden"); }
 
-// ========== РЕГИСТРАЦИЯ ==========
+function openFeed(){
+    create.classList.add("hidden");
+    feed.classList.remove("hidden");
+    loadFeed();
+}
+function openCreate(){
+    feed.classList.add("hidden");
+    create.classList.remove("hidden");
+}
+
+/* ================= РЕГИСТРАЦИЯ ================= */
 async function register(){
     let nick = regNick.value.trim();
     let pass = regPass.value;
     let pass2 = regPass2.value;
     let avatar = regAvatar.value.trim();
 
-    if(!nick || !pass || pass !== pass2){ alert("Ошибка"); return; }
+    if(!nick || !pass || pass!==pass2){ alert("Ошибка"); return; }
 
     let users = await fb("users");
-    if(users && users[nick]){
-        alert("Ник занят");
-        return;
-    }
+    if(users && users[nick]){ alert("Ник занят"); return; }
 
-    await fb("users/"+nick, "PUT", {pass, avatar});
-    alert("Аккаунт создан");
+    await fb("users/"+nick, "PUT", {
+        pass, avatar,
+        react: {}   // храним кто за что проголосовал
+    });
+
+    alert("Создано");
     showLogin();
 }
 
-// ========== ВХОД ==========
+/* ================= ВХОД ================= */
 async function login(){
     let nick = logNick.value.trim();
     let pass = logPass.value;
 
-    let user = await fb("users/"+nick);
-    if(!user || user.pass !== pass){
-        alert("Неверно");
-        return;
-    }
+    let u = await fb("users/"+nick);
+    if(!u || u.pass !== pass){ alert("Ошибка"); return; }
 
     localStorage.nick = nick;
-    showMenu();
-    loadFeed();
+    reg.classList.add("hidden");
+    log.classList.add("hidden");
+    topbar.classList.remove("hidden");
+    openFeed();
 }
 
-// ========== ПУБЛИКАЦИЯ ТВИТА ==========
+/* ================= СОЗДАТЬ ТВИТ ================= */
 async function sendTweet(){
     let text = tweetText.value.trim();
     let img = tweetImg.value.trim();
     let nick = localStorage.nick;
+    let user = await fb("users/"+nick);
 
     if(!text && !img) return;
 
-    await fb("tweets", "POST", {
-        nick, text, img,
+    await fb("tweets","POST",{
+        nick,
+        avatar: user.avatar,
+        text, img,
         time: Date.now(),
-        reactions: {like:0, laugh:0, wow:0}
+        reactions: { like:0, laugh:0, wow:0 }
     });
 
-    tweetText.value = "";
-    tweetImg.value = "";
-    loadFeed();
+    tweetText.value="";
+    tweetImg.value="";
+    openFeed();
 }
 
-// ========== РЕАКЦИИ ==========
+/* ================= РЕАКЦИИ (фикс бесконечных кликов) ================= */
 async function react(id, type){
-    let tweet = await fb("tweets/"+id);
-    if(!tweet) return;
+    let nick = localStorage.nick;
 
-    tweet.reactions[type]++;
+    let tweet = await fb("tweets/"+id);
+    let user = await fb("users/"+nick);
+
+    if(!tweet || !user) return;
+
+    if(!user.react) user.react = {};
+
+    let prev = user.react[id]; // предыдущая реакция
+
+    // если реакция та же → отмена
+    if(prev === type){
+        tweet.reactions[type]--;
+        delete user.react[id];
+    }
+    else {
+        // убираем старую реакцию
+        if(prev){
+            tweet.reactions[prev]--;
+        }
+        // ставим новую
+        tweet.reactions[type]++;
+        user.react[id] = type;
+    }
 
     await fb("tweets/"+id, "PUT", tweet);
+    await fb("users/"+nick, "PUT", user);
+
     loadFeed();
 }
 
-// ========== ЛЕНТА ==========
+/* ================= ЛЕНТА ================= */
 async function loadFeed(){
-    let feed = document.getElementById("feed");
     feed.innerHTML = "";
 
     let tweets = await fb("tweets");
     if(!tweets) return;
 
-    let items = Object.entries(tweets).sort((a,b)=>b[1].time - a[1].time);
+    let arr = Object.entries(tweets).sort((a,b)=>b[1].time - a[1].time);
 
-    for(let [id,t] of items){
-        let html = `
-        <div class="tweet">
-            <b>${t.nick}</b><br>
+    for(let [id,t] of arr){
+        feed.innerHTML += `
+        <div class="tweet fade">
+            <div class="userRow">
+                <img class="avatar" src="${t.avatar}">
+                <b>${t.nick}</b>
+            </div>
             ${t.text? `<div>${t.text}</div>`:""}
-            ${t.img? `<img src="${t.img}" style="width:100%;margin-top:10px;border-radius:10px;">`:""}
+            ${t.img? `<img src="${t.img}">`:""}
             <div class="reacts" style="margin-top:10px;">
                 <span onclick="react('${id}','like')">❤️ ${t.reactions.like}</span>
                 <span onclick="react('${id}','laugh')">😂 ${t.reactions.laugh}</span>
@@ -187,10 +291,8 @@ async function loadFeed(){
             </div>
         </div>
         `;
-        feed.innerHTML += html;
     }
 }
 </script>
-
 </body>
 </html>
