@@ -2,100 +2,143 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Creator Dash — Menu</title>
+<title>Geometry Dash Clone</title>
 <style>
-    body {
-        margin: 0;
-        padding: 0;
-        background: #000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden;
-        font-family: Arial, sans-serif;
-    }
+  body { margin: 0; background: #222; overflow: hidden; font-family: sans-serif; color: #fff; }
+  canvas { display: block; background: #333; margin: 0 auto; }
+  #gui { position: absolute; top: 10px; left: 10px; }
+  button { margin: 5px; padding: 5px 10px; background: #555; border: none; color: white; cursor: pointer; }
+  input { padding: 5px; margin: 5px; }
+</style>
+</head>
+<body>
 
-    .hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
+<div id="gui">
+  <button id="playBtn">Играть</button>
+  <button id="editorBtn">Редактор</button>
+  <input type="text" id="levelName" placeholder="Имя уровня">
+  <button id="saveBtn">Сохранить уровень</button>
+  <button id="loadBtn">Загрузить уровень</button>
+</div>
 
-    .bg {
-        position: absolute;
-        width: 110%;
-        height: 110%;
-        background-image: url("https://www.dropbox.com/scl/fi/14d5wf5skm4abjrq1lsz5/game_bg_01_001-hd.png?rlkey=hvknzrpw1ej5c1rq8d89ylbnk&st=cmf15w0y&dl=1");
-        background-size: cover;
-        background-position: center;
-        z-index: -1;
-        filter: hue-rotate(200deg);
-        animation: hueBg 12s linear infinite;
-        transition: opacity 0.3s ease;
-    }
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
-    @keyframes hueBg {
-        0%   { filter: hue-rotate(200deg); }
-        100% { filter: hue-rotate(560deg); }
-    }
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>
+  // Firebase setup
+  const firebaseConfig = {
+    databaseURL: "https://aitube-8e681-default-rtdb.firebaseio.com/"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    .container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transition: opacity 0.3s ease;
-    }
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
 
-    .title {
-        width: 420px;
-        height: 160px;
-        margin-bottom: 40px;
-        background-image: url("https://www.dropbox.com/scl/fi/tds5a4n12u02r2r9gluhf/logo-Creator-Dash.png?rlkey=xhzvyhkau45k22dt8g67qsv2e&st=6xziywtl&dl=1");
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-    }
+  let gameMode = 'menu'; // 'menu', 'play', 'edit'
+  let player = { x: 50, y: 300, w: 30, h: 30, vy: 0, onGround: false };
+  let gravity = 0.7;
+  let jumpPower = -12;
+  let obstacles = [];
+  let levelData = [];
+  let scroll = 0;
+  let speed = 4;
 
-    .menu {
-        display: flex;
-        gap: 60px;
-    }
+  function spawnObstacle(x, y, w, h) {
+    obstacles.push({ x, y, w, h });
+  }
 
-    .btn {
-        width: 234px;
-        height: 234px;
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-position: center;
-        cursor: pointer;
-        transition: transform 0.15s ease;
-        touch-action: manipulation;
+  function resetGame() {
+    player.y = 300;
+    player.vy = 0;
+    scroll = 0;
+    obstacles = [];
+    for(let block of levelData){
+      spawnObstacle(block.x, block.y, block.w, block.h);
     }
+  }
 
-    .btn:active {
-        transform: scale(0.9);
+  function update() {
+    if(gameMode === 'play') {
+      player.vy += gravity;
+      player.y += player.vy;
+      if(player.y + player.h > canvas.height){
+        player.y = canvas.height - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      } else {
+        player.onGround = false;
+      }
+
+      scroll += speed;
+      for(let obs of obstacles){
+        obs.x -= speed;
+        if(player.x < obs.x + obs.w && player.x + player.w > obs.x &&
+           player.y < obs.y + obs.h && player.y + player.h > obs.y){
+          resetGame();
+        }
+      }
     }
+    draw();
+    requestAnimationFrame(update);
+  }
 
-    #playBtn { transform: translateX(-25px); }
-    #editorBtn { transform: translateX(25px); }
-
-    #loadingScreen {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.85);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 10;
-        transition: opacity 0.4s ease;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Player
+    ctx.fillStyle = 'yellow';
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+    // Obstacles
+    ctx.fillStyle = 'red';
+    for(let obs of obstacles){
+      ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
     }
-
-    #loadingImg {
-        width: 260px;
-        height: 260px;
-        background-image: url("https://www.dropbox.com/scl/fi/vwuvfs7npmuatpw54z04j/font1-Assets-Load.png?rlkey=kbplxbknkys98jwf3sykc9rqq&st=8tfr0hdi&dl=1");
-        background-size: contain;
-        background-repeat: no-repeat;
+    // Editor
+    if(gameMode === 'edit'){
+      ctx.fillStyle = 'cyan';
+      for(let block of levelData){
+        ctx.fillRect(block.x, block.y, block.w, block.h);
+      }
     }
-... (осталось: 98 строк)
+  }
+
+  document.addEventListener('keydown', e => {
+    if(e.code === 'Space'){
+      if(player.onGround){
+        player.vy = jumpPower;
+      }
+      if(gameMode === 'edit'){
+        // add block where player is
+        levelData.push({x: player.x + scroll, y: player.y, w: 40, h: 40});
+      }
+    }
+  });
+
+  // Buttons
+  document.getElementById('playBtn').onclick = () => {
+    gameMode = 'play';
+    resetGame();
+  };
+  document.getElementById('editorBtn').onclick = () => {
+    gameMode = 'edit';
+    obstacles = [];
+  };
+  document.getElementById('saveBtn').onclick = () => {
+    const name = document.getElementById('levelName').value || 'default';
+    db.ref('levels/' + name).set(levelData);
+    alert('Уровень сохранён!');
+  };
+  document.getElementById('loadBtn').onclick = () => {
+    const name = document.getElementById('levelName').value || 'default';
+    db.ref('levels/' + name).once('value').then(snapshot => {
+      levelData = snapshot.val() || [];
+      alert('Уровень загружен!');
+    });
+  };
+
+  update();
+</script>
+
+</body>
+</html>
