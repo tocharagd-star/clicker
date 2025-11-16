@@ -1,281 +1,487 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Minecraft HTML Firebase</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>HTML Minecraft - Multiplayer Prototype</title>
 <style>
-body {
-    margin: 0;
-    overflow: hidden;
-    background: #87CEEB;
-    touch-action: none;
-}
-#canvas {
-    width: 100vw;
-    height: 100vh;
-    background: #87CEEB;
-    display: block;
-}
-#ui {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 99;
-    font-family: Arial;
-}
-button {
-    padding: 10px;
-    font-size: 16px;
-    margin-bottom: 5px;
-}
-#servers {
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
-    max-width: 200px;
-}
-.joystick {
-    position: fixed;
-    bottom: 50px;
-    left: 50px;
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.3);
-    touch-action: none;
-}
-.joystick-inner {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    background: white;
-    border-radius: 50%;
-    left: 35px;
-    top: 35px;
-}
+  :root{--ui-bg:rgba(10,10,10,0.6);--panel:#ffffff;--accent:#2b90ff;}
+  html,body{height:100%;margin:0;font-family:Inter,UI-sans-serif,system-ui,Arial; background:#87CEEB;}
+  #canvas{display:block;width:100vw;height:100vh; touch-action:none;}
+  /* HUD */
+  #hud{position:fixed;left:0;right:0;top:0;pointer-events:none;z-index:50;}
+  .top-center{position:relative;margin:10px auto;width:fit-content;pointer-events:auto;}
+  .panel {background:var(--ui-bg);backdrop-filter:blur(6px);color:white;padding:8px 12px;border-radius:10px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,0.25)}
+  #score {font-weight:700;font-size:18px;}
+  .btn {background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);padding:8px 10px;border-radius:8px;color:white;cursor:pointer;}
+  .btn:active{transform:translateY(1px);}
+  /* Left square buttons */
+  #leftBar{position:fixed;left:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:60;pointer-events:auto;}
+  .square{width:56px;height:56px;border-radius:8px;background:var(--ui-bg);display:flex;align-items:center;justify-content:center;color:white;border:1px solid rgba(255,255,255,0.07);cursor:pointer;box-shadow:0 6px 14px rgba(0,0,0,0.2)}
+  .square img{width:30px;height:30px;object-fit:cover;border-radius:6px;}
+  /* Modals */
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;background:var(--panel);color:#111;padding:12px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.35);z-index:80;display:none;}
+  .modal.visible{display:block;}
+  .modal h3{margin:0 0 8px 0;}
+  .close{position:absolute;right:8px;top:8px;cursor:pointer;font-weight:700;color:#666}
+  /* Inventory grid */
+  .inventory-grid{display:grid;grid-template-columns:repeat(5,56px);gap:8px;}
+  .slot{width:56px;height:56px;border-radius:8px;background:#f3f3f3;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .hotbar{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;display:flex;gap:8px;z-index:60;pointer-events:auto;}
+  .hotbar .slot{width:56px;height:56px;background:rgba(255,255,255,0.95);border-radius:8px;display:flex;align-items:center;justify-content:center}
+  /* Joystick & mobile controls */
+  #touch-controls{position:fixed;left:12px;bottom:12px;z-index:60;pointer-events:auto;}
+  .joystick {width:110px;height:110px;border-radius:50%;background:rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;position:relative;touch-action:none}
+  .joy-knob{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.95);transform:translate(0,0);transition:transform 0.02s;}
+  #mobile-actions{position:fixed;right:12px;bottom:12px;display:flex;flex-direction:column;gap:10px;z-index:60;pointer-events:auto;}
+  .action-btn{width:64px;height:64px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;box-shadow:0 8px 20px rgba(43,144,255,0.25);cursor:pointer}
+  /* Player name tag */
+  .nameTag{font-size:12px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,0.6);color:white;white-space:nowrap}
+  /* Servers list */
+  #serversBox{position:fixed;right:12px;top:12px;z-index:60;background:var(--ui-bg);padding:8px;border-radius:10px;color:white}
+  #serversBox button{display:block;width:160px;text-align:left;margin-top:6px}
+  /* Responsive tweaks */
+  @media (max-width:600px){
+    .top-center{margin:6px}
+    .panel{padding:6px 8px}
+    .square{width:48px;height:48px}
+    .slot{width:48px;height:48px}
+    .hotbar .slot{width:48px;height:48px}
+    .action-btn{width:56px;height:56px}
+  }
 </style>
 </head>
 <body>
 
 <canvas id="canvas"></canvas>
 
-<div id="ui">
-    <button onclick="createServer()">Создать сервер</button>
-    <div id="servers"></div>
+<!-- HUD -->
+<div id="hud">
+  <div class="top-center">
+    <div class="panel" id="topPanel" style="pointer-events:auto">
+      <div id="score">Сервер: —</div>
+      <button class="btn" id="btnCenterAction">Действие</button>
+    </div>
+  </div>
 </div>
 
-<div class="joystick" id="joy">
-    <div class="joystick-inner" id="joyInner"></div>
+<!-- Left vertical squares -->
+<div id="leftBar">
+  <div class="square" id="btnMenu" title="Меню">☰</div>
+  <div class="square" id="btnInv" title="Инвентарь">🎒</div>
+  <div class="square" id="btnLeaders" title="Лидеры">🏆</div>
 </div>
 
+<!-- Servers box -->
+<div id="serversBox"></div>
+
+<!-- Modals -->
+<div class="modal" id="menuModal">
+  <span class="close" id="closeMenu">✕</span>
+  <h3>Меню</h3>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn" id="leaveServer">Покинуть сервер</button>
+    <button class="btn" id="createServerBtn">Создать сервер</button>
+  </div>
+</div>
+
+<div class="modal" id="invModal">
+  <span class="close" id="closeInv">✕</span>
+  <h3>Инвентарь</h3>
+  <div class="inventory-grid" id="invGrid"></div>
+</div>
+
+<div class="modal" id="leadersModal">
+  <span class="close" id="closeLeaders">✕</span>
+  <h3>Лидеры</h3>
+  <div id="leadersList" style="display:flex;flex-direction:column;gap:8px"></div>
+</div>
+
+<!-- Hotbar -->
+<div class="hotbar" id="hotbar"></div>
+
+<!-- Touch controls -->
+<div id="touch-controls">
+  <div class="joystick" id="joystick">
+    <div class="joy-knob" id="knob"></div>
+  </div>
+</div>
+
+<div id="mobile-actions">
+  <div class="action-btn" id="btnJump">↑</div>
+  <div class="action-btn" id="btnInteract">⛏</div>
+</div>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-//////////////////////////
-// FIREBASE INIT
-//////////////////////////
-firebase.initializeApp({
-    databaseURL: "https://clicker-3044c-default-rtdb.firebaseio.com/"
-});
-
+/* ========= FIREBASE ========== */
+firebase.initializeApp({ databaseURL: "https://clicker-3044c-default-rtdb.firebaseio.com/" });
 const db = firebase.database();
 
-//////////////////////////
-// GLOBAL
-//////////////////////////
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-canvas.width = innerWidth;
-canvas.height = innerHeight;
+/* ========= GLOBAL STATE ========= */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W = canvas.width = innerWidth;
+let H = canvas.height = innerHeight;
 
+window.addEventListener('resize', ()=>{ W = canvas.width = innerWidth; H = canvas.height = innerHeight; });
+
+const playerID = "p" + Math.random().toString(36).slice(2,9);
+let playerName = "User_" + playerID.slice(-4);
 let serverID = null;
-let playerID = "p" + Math.random().toString(36).substr(2,6);
 
-let world = [];
-let players = {};
+let world = []; // array of blocks {x,y,type}
+let players = {}; // players synced from firebase
+let local = {x:0,y:0,vx:0,vy:0,onGround:false,dir:0}; // dir for camera
 
-let px = 0, py = 0;
-let vx = 0, vy = 0;
-let onGround = false;
+/* HOTBAR / INVENTORY */
+let inventory = new Array(10).fill(null);
+inventory[0] = {id:'dirt',count:64};
+inventory[1] = {id:'grass',count:12};
+let selectedSlot = 0;
 
-//////////////////////////
-// GENERATE SIMPLE WORLD
-//////////////////////////
-function genWorld() {
-    world = [];
-    for (let x = -30; x <= 30; x++) {
-        world.push({x, y:10, type:1});
-    }
+/* UI refs */
+const scoreEl = document.getElementById('score');
+const serversBox = document.getElementById('serversBox');
+const btnCenterAction = document.getElementById('btnCenterAction');
+
+/* ========= WORLD GENERATION ========= */
+function generateFlat() {
+  world = [];
+  // ground line
+  for (let x=-80;x<=80;x++){
+    world.push({x:x,y:6,type:1}); // dirt
+    if (Math.random() < 0.05) world.push({x:x,y:5,type:2}); // grass topper sometimes
+  }
 }
 
-//////////////////////////
-// DRAW
-//////////////////////////
+/* ========= RENDER ========= */
+function worldToScreen(wx, wy) {
+  const scale = 28;
+  const sx = W/2 + (wx - local.x) * scale;
+  const sy = H/2 + (wy - local.y) * scale;
+  return {sx, sy, scale};
+}
+
 function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,W,H);
+  // sky
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#87CEEB'); g.addColorStop(1,'#a8d0ff');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 
-    let scale = 30;
+  // blocks
+  for (let b of world){
+    const {sx,sy,scale} = worldToScreen(b.x,b.y);
+    if (sx + scale < -100 || sx - scale > W + 100) continue;
+    ctx.fillStyle = (b.type===1)?'#8B5A2B':'#5BC13A';
+    ctx.fillRect(sx, sy, scale, scale);
+    // outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.strokeRect(sx, sy, scale, scale);
+  }
 
-    // blocks
-    for (let b of world) {
-        ctx.fillStyle = b.type === 1 ? "#8B4513" : "#00FF00";
-        ctx.fillRect(
-            canvas.width/2 + (b.x - px)*scale,
-            canvas.height/2 + (b.y - py)*scale,
-            scale, scale
-        );
-    }
+  // players
+  for (let id in players){
+    const p = players[id];
+    const {sx,sy,scale} = worldToScreen(p.x, p.y);
+    // body
+    ctx.fillStyle = (id===playerID)?'#ffd54a':'#e03e3e';
+    ctx.fillRect(sx-10, sy-30, 20, 30);
+    // head
+    ctx.fillStyle = '#fff'; ctx.fillRect(sx-10, sy-46, 20, 16);
+    // name tag
+    ctx.font = '12px Inter, Arial'; ctx.textAlign='center';
+    ctx.fillStyle = 'black';
+    ctx.globalAlpha = 0.6;
+    const nameW = ctx.measureText(p.name||'').width + 10;
+    ctx.fillRect(sx - nameW/2, sy-58, nameW, 18);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle='white'; ctx.fillText(p.name||'', sx, sy-45 + 2);
+  }
 
-    // players
-    for (let id in players) {
-        let pl = players[id];
-        ctx.fillStyle = id === playerID ? "yellow" : "red";
-        ctx.fillRect(
-            canvas.width/2 + (pl.x - px)*scale,
-            canvas.height/2 + (pl.y - py)*scale - 30,
-            20, 30
-        );
-    }
-
-    requestAnimationFrame(draw);
+  // center cross / HUD debug
+  requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
 
-//////////////////////////
-// PHYSICS
-//////////////////////////
-setInterval(()=> {
-    vy += 0.05;
-    px += vx;
-    py += vy;
+/* ========= PHYSICS & LOCAL MOVEMENT ========= */
+const GRAV = 0.05;
+setInterval(()=>{
+  // apply gravity
+  local.vy += GRAV;
+  local.x += local.vx;
+  local.y += local.vy;
 
-    // collide with ground
-    for (let b of world) {
-        if (Math.abs(px - b.x) < 0.5 && Math.abs(py - b.y) < 1) {
-            py = b.y - 1;
-            vy = 0;
-            onGround = true;
-        }
+  // simple collision with world blocks underfoot
+  let standing = false;
+  for (let b of world){
+    if (Math.abs(local.x - b.x) < 0.5 && Math.abs(local.y - b.y) < 1){
+      local.y = b.y - 1; local.vy = 0; standing = true; break;
     }
+  }
+  local.onGround = standing;
 
-    if (serverID) {
-        db.ref("servers/"+serverID+"/players/"+playerID).set({
-            x: px,
-            y: py
-        });
-    }
+  // apply friction
+  local.vx *= 0.98;
+
+  // sync position to firebase
+  if (serverID){
+    db.ref(`servers/${serverID}/players/${playerID}`).set({x:local.x,y:local.y,name:playerName,ts:Date.now()});
+  }
 }, 20);
 
-//////////////////////////
-// INPUT (PC)
-//////////////////////////
-let keys = {};
-document.addEventListener("keydown", e=> keys[e.key] = true);
-document.addEventListener("keyup", e=> keys[e.key] = false);
+/* ========= INPUT PC ========= */
+const keys = {};
+document.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()] = true; handleHotkeys(e); });
+document.addEventListener('keyup', e=>{ keys[e.key.toLowerCase()] = false; });
+function handleHotkeys(e){
+  if (e.key === '1') selectSlot(0);
+  if (e.key === '2') selectSlot(1);
+  if (e.key === ' ') { if (local.onGround) { local.vy = -6; local.onGround=false; } }
+}
 
 setInterval(()=>{
-    vx = 0;
-    if (keys["a"] || keys["ArrowLeft"]) vx = -0.1;
-    if (keys["d"] || keys["ArrowRight"]) vx = 0.1;
-    if ((keys["w"] || keys["ArrowUp"]) && onGround) {
-        vy = -0.35;
-        onGround = false;
-    }
-}, 20);
+  let speed = 0.15;
+  if (keys['a'] || keys['arrowleft']) local.vx = -speed;
+  else if (keys['d'] || keys['arrowright']) local.vx = speed;
+  else local.vx = 0;
+  if ((keys['w'] || keys['arrowup']) && local.onGround){ local.vy = -6; local.onGround=false;}
+}, 16);
 
-//////////////////////////
-// INPUT (TOUCH JOYSTICK)
-//////////////////////////
-let joy = document.getElementById("joy");
-let joyInner = document.getElementById("joyInner");
-let jCenter = {x: 60, y: 60};
+/* ========= MOUSE LOOK & Interact ========= */
+let isMouseDown = false;
+let lastMouse = null;
+canvas.addEventListener('mousedown', e=>{ isMouseDown = true; lastMouse = {x:e.clientX,y:e.clientY}; });
+canvas.addEventListener('mouseup', e=>{ isMouseDown = false; lastMouse = null; });
+canvas.addEventListener('mousemove', e=>{
+  if (isMouseDown && lastMouse){
+    const dx = e.clientX - lastMouse.x;
+    // mouse drag moves camera horizontally
+    local.x -= dx / 28;
+    lastMouse = {x:e.clientX,y:e.clientY};
+  }
+});
+btnCenterAction.addEventListener('click', ()=> doInteract());
 
-joy.addEventListener("touchmove", e=>{
-    let t = e.touches[0];
-    let rect = joy.getBoundingClientRect();
-    let x = t.clientX - rect.left;
-    let y = t.clientY - rect.top;
+/* ========= TOUCH JOYSTICK ========= */
+const joystick = document.getElementById('joystick');
+const knob = document.getElementById('knob');
+let joyCenter = {x:0,y:0};
+function getCoords(el){ const r = el.getBoundingClientRect(); return {x:r.left + r.width/2, y:r.top + r.height/2}; }
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
 
-    let dx = x - jCenter.x;
-    let dy = y - jCenter.y;
+joystick.addEventListener('touchstart', e=>{
+  e.preventDefault();
+});
+joystick.addEventListener('touchmove', e=>{
+  const t = e.touches[0];
+  const rect = joystick.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  let dx = t.clientX - cx;
+  let dy = t.clientY - cy;
+  const max = rect.width/2 - 20;
+  const dist = Math.hypot(dx,dy);
+  const ratio = Math.min(1, max / Math.max(1, dist));
+  dx *= ratio; dy *= ratio;
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
 
-    if (dx > 30) vx = 0.1;
-    else if (dx < -30) vx = -0.1;
-    else vx = 0;
-
-    if (dy < -30 && onGround) {
-        vy = -0.35;
-        onGround = false;
-    }
-
-    joyInner.style.left = (x-25)+"px";
-    joyInner.style.top = (y-25)+"px";
+  // map to movement (horizontal only)
+  const nx = dx / max;
+  local.vx = nx * 0.18;
+});
+joystick.addEventListener('touchend', ()=>{
+  knob.style.transform = `translate(0px,0px)`;
+  local.vx = 0;
 });
 
-joy.addEventListener("touchend", ()=>{
-    vx = 0;
-    joyInner.style.left = "35px";
-    joyInner.style.top = "35px";
-});
+/* mobile action buttons */
+document.getElementById('btnJump').addEventListener('click', ()=>{ if (local.onGround){ local.vy = -6; local.onGround=false; } });
+document.getElementById('btnInteract').addEventListener('click', ()=> doInteract());
 
-//////////////////////////
-// SERVERS LIST
-//////////////////////////
-db.ref("servers").on("value", snap=>{
-    let list = snap.val() || {};
-    let box = document.getElementById("servers");
-    box.innerHTML = "";
+/* ========= UI: Modals & Buttons ========= */
+const menuModal = document.getElementById('menuModal');
+const invModal = document.getElementById('invModal');
+const leadersModal = document.getElementById('leadersModal');
 
-    for (let id in list) {
-        let b = document.createElement("button");
-        b.innerHTML = "Сервер " + id;
-        b.onclick = ()=> joinServer(id);
-        box.appendChild(b);
+document.getElementById('btnMenu').addEventListener('click', ()=> menuModal.classList.toggle('visible'));
+document.getElementById('closeMenu').addEventListener('click', ()=> menuModal.classList.remove('visible'));
+document.getElementById('btnInv').addEventListener('click', ()=> { renderInventory(); invModal.classList.toggle('visible'); });
+document.getElementById('closeInv').addEventListener('click', ()=> invModal.classList.remove('visible'));
+document.getElementById('btnLeaders').addEventListener('click', ()=> { renderLeaders(); leadersModal.classList.toggle('visible'); });
+document.getElementById('closeLeaders').addEventListener('click', ()=> leadersModal.classList.remove('visible'));
+
+document.getElementById('createServerBtn').addEventListener('click', ()=> createServer());
+document.getElementById('leaveServer').addEventListener('click', ()=> leaveServer());
+
+/* ========= Inventory rendering ========= */
+const invGrid = document.getElementById('invGrid');
+const hotbar = document.getElementById('hotbar');
+
+function renderInventory(){
+  invGrid.innerHTML = '';
+  for (let i=0;i<10;i++){
+    const s = document.createElement('div'); s.className='slot'; s.dataset.idx=i;
+    s.textContent = inventory[i]? inventory[i].id + ' x' + inventory[i].count : '';
+    s.style.cursor='pointer';
+    s.addEventListener('click', ()=>{ selectSlot(i); renderInventory(); renderHotbar(); });
+    invGrid.appendChild(s);
+  }
+}
+
+function renderHotbar(){
+  hotbar.innerHTML = '';
+  for (let i=0;i<10;i++){
+    const s = document.createElement('div'); s.className='slot';
+    s.style.border = (i===selectedSlot)? `2px solid ${getComputedStyle(document.documentElement).getPropertyValue('--accent')}` : '1px solid #ccc';
+    s.textContent = inventory[i]? inventory[i].id : '';
+    s.addEventListener('click', ()=>{ selectSlot(i); renderHotbar(); renderInventory(); });
+    hotbar.appendChild(s);
+  }
+}
+function selectSlot(i){ selectedSlot = i; }
+
+/* ========= Leaders rendering ========= */
+function renderLeaders(){
+  const list = document.getElementById('leadersList'); list.innerHTML='';
+  const arr = Object.keys(players).map(id=>({id, ...players[id]}));
+  arr.sort((a,b)=> (b.kills||0) - (a.kills||0));
+  for (let p of arr){
+    const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px';
+    const avatar = document.createElement('div'); avatar.style.width='40px'; avatar.style.height='40px'; avatar.style.borderRadius='8px';
+    avatar.style.background = `linear-gradient(135deg,#${hashColor(p.name||p.id).slice(0,6)},#ffffff22)`;
+    avatar.textContent = (p.name||'').slice(0,1).toUpperCase();
+    avatar.style.display='flex'; avatar.style.alignItems='center'; avatar.style.justifyContent='center'; avatar.style.fontWeight='700'; avatar.style.color='white';
+    const txt = document.createElement('div'); txt.innerHTML = `<b>${p.name||p.id}</b><div style="font-size:12px;color:#666">${Math.round(p.x||0)}, ${Math.round(p.y||0)}</div>`;
+    row.appendChild(avatar); row.appendChild(txt);
+    list.appendChild(row);
+  }
+}
+
+/* simple hash to color */
+function hashColor(s){
+  let h=0; for (let i=0;i<s.length;i++) h = (h<<5)-h + s.charCodeAt(i);
+  return (h>>>0).toString(16);
+}
+
+/* ========= INTERACTION: place/break placeholder ========= */
+function doInteract(){
+  // break block in front (simple: nearest block in range)
+  const range = 3;
+  let target = null;
+  for (let b of world){
+    const dx = b.x - Math.round(local.x);
+    const dy = b.y - Math.round(local.y);
+    if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1 && Math.hypot(dx,dy) <= range){
+      target = b; break;
     }
-});
+  }
+  if (target){
+    // remove block locally and sync world to firebase
+    world = world.filter(x=> x !== target);
+    if (serverID) db.ref(`servers/${serverID}/world`).set(world);
+    // give player block
+    const id = (target.type===1)?'dirt':'grass';
+    addToInventory(id,1);
+    renderInventory(); renderHotbar();
+    return;
+  } else {
+    // place block in front of player based on selectedSlot
+    const item = inventory[selectedSlot];
+    if (!item) return;
+    const placeX = Math.round(local.x + (local.vx>0?1:-1));
+    const placeY = Math.round(local.y);
+    world.push({x:placeX,y:placeY,type:(item.id==='dirt')?1:2});
+    if (serverID) db.ref(`servers/${serverID}/world`).set(world);
+    // consume one
+    item.count--; if (item.count<=0) inventory[selectedSlot]=null;
+    renderInventory(); renderHotbar();
+  }
+}
+function addToInventory(id,count){
+  // try stack
+  for (let i=0;i<10;i++){
+    if (inventory[i] && inventory[i].id === id){ inventory[i].count += count; return; }
+  }
+  for (let i=0;i<10;i++){ if (!inventory[i]){ inventory[i] = {id,count}; return; } }
+}
 
-//////////////////////////
-// CREATE SERVER
-//////////////////////////
-function createServer() {
-    serverID = "s" + Math.random().toString(36).substr(2,4);
-    genWorld();
-
-    db.ref("servers/"+serverID).set({
-        world: world,
-        players:{}
-    });
-
+/* ========= SERVERS: create / join / list ========= */
+function createServer(){
+  serverID = "s" + Math.random().toString(36).slice(2,6);
+  generateFlat();
+  db.ref(`servers/${serverID}`).set({ world: world, players: {} }).then(()=>{
+    scoreEl.textContent = `Сервер: ${serverID}`;
     listenPlayers();
+  });
 }
-
-//////////////////////////
-// JOIN SERVER
-//////////////////////////
-function joinServer(id) {
-    serverID = id;
-
-    db.ref("servers/"+id+"/world").once("value", snap=>{
-        world = snap.val() || [];
-    });
-
+function joinServer(id){
+  serverID = id;
+  db.ref(`servers/${id}/world`).once('value').then(snap=>{
+    world = snap.val() || [];
+    scoreEl.textContent = `Сервер: ${serverID}`;
     listenPlayers();
+  });
+}
+function leaveServer(){
+  if (!serverID) return;
+  db.ref(`servers/${serverID}/players/${playerID}`).remove();
+  db.ref(`servers/${serverID}/players`).off();
+  serverID = null; scoreEl.textContent = `Сервер: —`;
 }
 
-function listenPlayers() {
-    db.ref("servers/"+serverID+"/players").on("value", snap=>{
-        players = snap.val() || {};
-    });
+/* server list live */
+db.ref('servers').on('value', snap=>{
+  const data = snap.val() || {};
+  serversBox.innerHTML = '<b style="color:white">Сервера:</b>';
+  for (let id in data){
+    const btn = document.createElement('button');
+    btn.className='btn'; btn.style.marginTop='6px'; btn.textContent = id;
+    btn.addEventListener('click', ()=> joinServer(id));
+    serversBox.appendChild(btn);
+  }
+});
 
-    db.ref("servers/"+serverID+"/players/"+playerID).set({
-        x: px,
-        y: py
-    });
-
-    db.ref("servers/"+serverID+"/players/"+playerID).onDisconnect().remove();
+/* ========= SYNC PLAYERS ========= */
+function listenPlayers(){
+  if (!serverID) return;
+  db.ref(`servers/${serverID}/players`).on('value', snap=>{
+    players = snap.val() || {};
+    // ensure local player exists in players (we update regularly anyway)
+    players[playerID] = players[playerID] || {x:local.x,y:local.y,name:playerName};
+    renderLeaders();
+  });
+  // set onDisconnect removal
+  db.ref(`servers/${serverID}/players/${playerID}`).onDisconnect().remove();
 }
+
+/* ========= INITIAL UI setup ========= */
+renderInventory(); renderHotbar();
+
+/* Quick create server to let user test immediately if none */
+if (!serverID){
+  createServer(); // autostart single server for testing
+}
+
+/* show names above players handled in draw loop based on players state */
+
+/* ========= Additional: periodic player cleanup ========= */
+setInterval(()=>{
+  // remove stale players server-side (optional, here local cleanup)
+  if (!serverID) return;
+  const now = Date.now();
+  for (let id in players){
+    if (players[id].ts && now - players[id].ts > 1000*60*5){ // 5 min stale
+      db.ref(`servers/${serverID}/players/${id}`).remove();
+    }
+  }
+}, 60*1000);
+
+/* ========= Utilities ========= */
+console.log('Client started', playerID);
 </script>
-
 </body>
 </html>
