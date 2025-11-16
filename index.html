@@ -2,21 +2,42 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Y — соцсеть</title>
+<title>Y — соцсеть + TikHTML</title>
 <style>
 body {
     margin: 0;
     background: #0d0d0d;
     color: white;
     font-family: Arial;
-    overflow-x: hidden;
 }
 
-/* ======= АНИМАЦИИ ======= */
+/* Анимации */
 .fade { animation: fade .3s ease; }
 @keyframes fade { from{opacity:0; transform:translateY(5px);} to{opacity:1;} }
 
-/* ======= ИНПУТЫ, КНОПКИ ======= */
+/* Основное меню */
+#topbar {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 15px;
+    background: #111;
+    border-bottom: 1px solid #222;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+#topbar button {
+    width: auto;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    background: #1da1f2;
+    color: white;
+    cursor: pointer;
+}
+
+/* Поля */
 input, textarea {
     width: 100%;
     padding: 12px;
@@ -26,88 +47,65 @@ input, textarea {
     background: #1a1a1a;
     color: white;
 }
-button {
-    width: 100%;
-    padding: 12px;
-    margin-top: 8px;
-    border-radius: 10px;
-    border: none;
-    background: #1da1f2;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-    transition: .15s;
-}
-button:hover { background: #0c85d0; }
 
-/* ======= МЕНЮ ======= */
-#topbar {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    padding: 15px;
-    background: #111;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    border-bottom: 1px solid #222;
-}
-#topbar button {
-    width: auto;
-    padding: 10px 20px;
-}
-
-/* ======= КОНТЕЙНЕР ======= */
-.container { max-width: 600px; margin: 30px auto; padding: 10px; }
-
-/* ======= ТВИТ ======= */
-.tweet {
+/* Карточки */
+.tweet, .project {
     background: #181818;
     padding: 15px;
-    border-radius: 12px;
     margin-bottom: 12px;
+    border-radius: 12px;
     transition: .2s;
 }
-.tweet:hover { background:#202020; }
+.tweet:hover, .project:hover { background:#202020; }
 
-.tweet img { 
-    width: 100%; 
-    border-radius: 10px; 
-    margin-top: 10px; 
-}
-
-/* ======= РЕАКЦИИ ======= */
+/* Реакции */
 .reacts span {
-    margin-right: 15px;
+    margin-right: 12px;
     cursor: pointer;
-    transition: .15s;
     font-size: 18px;
+    transition: .15s;
 }
 .reacts span:hover { transform: scale(1.15); }
 
-/* ======= СКРЫТЫЕ БЛОКИ ======= */
+/* Аватарка */
+.avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background:#333;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:bold;
+}
+
+/* Контейнер */
+.container { max-width: 600px; margin: 20px auto; padding: 10px; }
+
 .hidden { display:none; }
 
-/* ======= АВАТАРКА ======= */
-.avatar {
-    width: 50px; height: 50px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 10px;
-    border: 2px solid #1da1f2;
+/* TikHTML iframe */
+iframe {
+    width: 100%;
+    height: 280px;
+    border:none;
+    background:white;
+    border-radius:10px;
+    margin-top:10px;
 }
-.userRow { display:flex; align-items:center; margin-bottom:10px; }
 
 </style>
 </head>
 <body>
 
-<!-- ========= ВЕРХНЕЕ МЕНЮ ========= -->
+<!-- ========= МЕНЮ ========= -->
 <div id="topbar" class="hidden">
     <button onclick="openFeed()">Лента</button>
     <button onclick="openCreate()">Создать твит</button>
+    <button onclick="openTikHTML()">TikHTML</button>
+    <button onclick="openCreateTik()">Создать проект</button>
 </div>
-
 
 <!-- ========= РЕГИСТРАЦИЯ ========= -->
 <div id="register" class="container fade">
@@ -115,9 +113,8 @@ button:hover { background: #0c85d0; }
     <input id="regNick" placeholder="Ник">
     <input id="regPass" placeholder="Пароль" type="password">
     <input id="regPass2" placeholder="Повторить пароль" type="password">
-    <input id="regAvatar" placeholder="URL аватарки">
     <button onclick="register()">Создать аккаунт</button>
-    <button onclick="showLogin()">Войти</button>
+    <button onclick="showLogin()">У меня есть аккаунт</button>
 </div>
 
 <!-- ========= ВХОД ========= -->
@@ -140,10 +137,21 @@ button:hover { background: #0c85d0; }
 <!-- ========= ЛЕНТА ========= -->
 <div id="feed" class="container hidden fade"></div>
 
+<!-- ========= TikHTML ========= -->
+<div id="tikhtml" class="container hidden fade"></div>
+
+<!-- ========= СОЗДАТЬ TikHTML ========= -->
+<div id="createTik" class="container hidden fade">
+    <h2>Новый TikHTML проект</h2>
+    <input id="tikName" placeholder="Название проекта">
+    <textarea id="tikCode" style="height:200px;" placeholder="HTML код проекта"></textarea>
+    <button onclick="saveTikHTML()">Сохранить проект</button>
+</div>
+
+
 
 <script>
 /* ================= FIREBASE ================= */
-
 const dbUrl = "https://aitube-8e681-default-rtdb.firebaseio.com/";
 
 async function fb(path, method="GET", data=null) {
@@ -158,20 +166,31 @@ async function fb(path, method="GET", data=null) {
 const reg = document.getElementById("register");
 const log = document.getElementById("login");
 const feed = document.getElementById("feed");
-const create = document.getElementById("createTweet");
+const createT = document.getElementById("createTweet");
+const tik = document.getElementById("tikhtml");
+const createTik = document.getElementById("createTik");
 const topbar = document.getElementById("topbar");
 
 function showLogin(){ reg.classList.add("hidden"); log.classList.remove("hidden"); }
 function showRegister(){ log.classList.add("hidden"); reg.classList.remove("hidden"); }
 
-function openFeed(){
-    create.classList.add("hidden");
-    feed.classList.remove("hidden");
-    loadFeed();
-}
-function openCreate(){
+function openFeed(){ hideAll(); feed.classList.remove("hidden"); loadFeed(); }
+function openCreate(){ hideAll(); createT.classList.remove("hidden"); }
+function openTikHTML(){ hideAll(); tik.classList.remove("hidden"); loadTikHTML(); }
+function openCreateTik(){ hideAll(); createTik.classList.remove("hidden"); }
+
+function hideAll(){
     feed.classList.add("hidden");
-    create.classList.remove("hidden");
+    createT.classList.add("hidden");
+    tik.classList.add("hidden");
+    createTik.classList.add("hidden");
+}
+
+/* ================= АВАТАРКА (генерация) ================= */
+function genAvatar(nick){
+    let c = nick.charCodeAt(0);
+    let hue = c * 12 % 360;
+    return { bg:`hsl(${hue},70%,50%)`, letter: nick[0].toUpperCase() };
 }
 
 /* ================= РЕГИСТРАЦИЯ ================= */
@@ -179,21 +198,33 @@ async function register(){
     let nick = regNick.value.trim();
     let pass = regPass.value;
     let pass2 = regPass2.value;
-    let avatar = regAvatar.value.trim();
 
-    if(!nick || !pass || pass!==pass2){ alert("Ошибка"); return; }
+    if(!nick || !pass || pass!==pass2) return alert("Ошибка");
 
     let users = await fb("users");
-    if(users && users[nick]){ alert("Ник занят"); return; }
+    if(users && users[nick]) return alert("Ник занят");
 
     await fb("users/"+nick, "PUT", {
-        pass, avatar,
-        react: {}   // храним кто за что проголосовал
+        pass,
+        react:{}
     });
 
     alert("Создано");
     showLogin();
 }
+
+/* ================= АВТО-ВХОД ================= */
+window.onload = async () => {
+    if(localStorage.nick){
+        let u = await fb("users/"+localStorage.nick);
+        if(u){
+            reg.classList.add("hidden");
+            log.classList.add("hidden");
+            topbar.classList.remove("hidden");
+            openFeed();
+        }
+    }
+};
 
 /* ================= ВХОД ================= */
 async function login(){
@@ -201,28 +232,28 @@ async function login(){
     let pass = logPass.value;
 
     let u = await fb("users/"+nick);
-    if(!u || u.pass !== pass){ alert("Ошибка"); return; }
+    if(!u || u.pass !== pass) return alert("Ошибка");
 
     localStorage.nick = nick;
+
     reg.classList.add("hidden");
     log.classList.add("hidden");
     topbar.classList.remove("hidden");
     openFeed();
 }
 
-/* ================= СОЗДАТЬ ТВИТ ================= */
+/* ================= ТВИТЫ ================= */
 async function sendTweet(){
     let text = tweetText.value.trim();
     let img = tweetImg.value.trim();
     let nick = localStorage.nick;
-    let user = await fb("users/"+nick);
 
     if(!text && !img) return;
 
     await fb("tweets","POST",{
         nick,
-        avatar: user.avatar,
-        text, img,
+        text,
+        img,
         time: Date.now(),
         reactions: { like:0, laugh:0, wow:0 }
     });
@@ -232,10 +263,9 @@ async function sendTweet(){
     openFeed();
 }
 
-/* ================= РЕАКЦИИ (фикс бесконечных кликов) ================= */
+/* ================= РЕАКЦИИ ================= */
 async function react(id, type){
     let nick = localStorage.nick;
-
     let tweet = await fb("tweets/"+id);
     let user = await fb("users/"+nick);
 
@@ -243,25 +273,19 @@ async function react(id, type){
 
     if(!user.react) user.react = {};
 
-    let prev = user.react[id]; // предыдущая реакция
+    let prev = user.react[id];
 
-    // если реакция та же → отмена
-    if(prev === type){
+    if(prev===type){
         tweet.reactions[type]--;
         delete user.react[id];
-    }
-    else {
-        // убираем старую реакцию
-        if(prev){
-            tweet.reactions[prev]--;
-        }
-        // ставим новую
+    } else {
+        if(prev) tweet.reactions[prev]--;
         tweet.reactions[type]++;
         user.react[id] = type;
     }
 
-    await fb("tweets/"+id, "PUT", tweet);
-    await fb("users/"+nick, "PUT", user);
+    await fb("tweets/"+id,"PUT",tweet);
+    await fb("users/"+nick,"PUT",user);
 
     loadFeed();
 }
@@ -276,11 +300,12 @@ async function loadFeed(){
     let arr = Object.entries(tweets).sort((a,b)=>b[1].time - a[1].time);
 
     for(let [id,t] of arr){
+        let av = genAvatar(t.nick);
         feed.innerHTML += `
         <div class="tweet fade">
-            <div class="userRow">
-                <img class="avatar" src="${t.avatar}">
-                <b>${t.nick}</b>
+            <div style="display:flex;align-items:center;margin-bottom:8px;">
+                <div class="avatar" style="background:${av.bg};">${av.letter}</div>
+                <b style="margin-left:10px;">${t.nick}</b>
             </div>
             ${t.text? `<div>${t.text}</div>`:""}
             ${t.img? `<img src="${t.img}">`:""}
@@ -289,8 +314,49 @@ async function loadFeed(){
                 <span onclick="react('${id}','laugh')">😂 ${t.reactions.laugh}</span>
                 <span onclick="react('${id}','wow')">😮 ${t.reactions.wow}</span>
             </div>
-        </div>
-        `;
+        </div>`;
+    }
+}
+
+/* ================= TikHTML ================= */
+async function saveTikHTML(){
+    let name = tikName.value.trim();
+    let code = tikCode.value.trim();
+    let nick = localStorage.nick;
+
+    if(!name || !code) return;
+
+    await fb("tikhtml","POST",{
+        nick,
+        name,
+        code,
+        time: Date.now()
+    });
+
+    tikName.value="";
+    tikCode.value="";
+    openTikHTML();
+}
+
+async function loadTikHTML(){
+    tik.innerHTML = "";
+
+    let projects = await fb("tikhtml");
+    if(!projects) return;
+
+    let arr = Object.entries(projects).sort((a,b)=>b[1].time - a[1].time);
+
+    for(let [id,p] of arr){
+        let av = genAvatar(p.nick);
+        tik.innerHTML += `
+        <div class="project fade">
+            <div style="display:flex;align-items:center;margin-bottom:8px;">
+                <div class="avatar" style="background:${av.bg};">${av.letter}</div>
+                <b style="margin-left:10px;">${p.nick}</b>
+            </div>
+            <b>${p.name}</b>
+            <iframe srcdoc="${encodeURIComponent(p.code)}"></iframe>
+        </div>`;
     }
 }
 </script>
